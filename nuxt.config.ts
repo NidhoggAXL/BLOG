@@ -33,6 +33,7 @@ export default defineNuxtConfig({
     authJwtExpiresIn: process.env.AUTH_JWT_EXPIRES_IN || "7d",
     authBootstrapUsername: process.env.AUTH_BOOTSTRAP_USERNAME || "admin",
     authBootstrapPassword: process.env.AUTH_BOOTSTRAP_PASSWORD || "admin123",
+    authLoginRateLimitPerMin: Number(process.env.AUTH_LOGIN_RATE_LIMIT_PER_MIN || 10),
     /** 公开展示 wikilink 链接前缀 */
     publicWikilinkBasePath: process.env.PUBLIC_WIKILINK_BASE_PATH || "/blog",
     /** 后台 wikilink 链接前缀 */

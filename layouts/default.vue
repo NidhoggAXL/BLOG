@@ -3,6 +3,11 @@ useHead({
   titleTemplate: (t) => (t ? `${t} · 个人博客` : '个人博客'),
 })
 
+const auth = useAuthStore()
+if (!auth.checked) {
+  await auth.fetchMe()
+}
+
 const { sidebarOpen, tocRailOpen, isBlogPostDetail, isPublicContentInset, showPublicSidebar } =
   useBlogReadPanels()
 </script>

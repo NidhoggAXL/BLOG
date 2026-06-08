@@ -1,9 +1,17 @@
 <script setup lang="ts">
 /** @deprecated 请使用 PublicTopNav；保留以兼容旧引用 */
 const route = useRoute();
+const auth = useAuthStore();
 const { profile } = useSiteProfile();
 
 const isKgActive = computed(() => route.path === "/knowledge-graph");
+
+const adminEntryTo = computed(() => (auth.user ? "/admin" : "/login"));
+const adminEntryLabel = computed(() => (auth.user ? "管理" : "登录"));
+
+onMounted(() => {
+  void auth.fetchMe();
+});
 
 const githubHref = computed(() => profile.value.githubUrl?.trim() || "");
 const giteeHref = computed(() => profile.value.giteeUrl?.trim() || "");
@@ -41,6 +49,20 @@ const emailHref = computed(() => {
     </nav>
 
     <div class="social-links" aria-label="社交与联系">
+      <NuxtLink
+        :to="adminEntryTo"
+        class="social-link admin-entry-link"
+        :title="auth.user ? '进入后台管理' : '登录后台'"
+      >
+        <svg class="social-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path
+            fill="currentColor"
+            d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"
+          />
+        </svg>
+        <span class="social-label">{{ adminEntryLabel }}</span>
+      </NuxtLink>
+
       <a
         :href="githubHref || '#'"
         class="social-link"

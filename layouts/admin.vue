@@ -84,6 +84,10 @@
 <script setup lang="ts">
 import PostImportFolderDialog from "~/components/posts/PostImportFolderDialog.vue";
 
+useHead({
+  meta: [{ name: "robots", content: "noindex, nofollow" }],
+});
+
 const route = useRoute();
 const auth = useAuthStore();
 const importOpen = ref(false);
@@ -167,7 +171,6 @@ function isMenuActive(to: string) {
 @import "~/assets/styles/admin-data-table.less";
 @import "~/assets/styles/dashboard.less";
 @import "~/assets/styles/compose-wikilink-autocomplete.less";
-@import "~/assets/styles/login.less";
 </style>
 
 <style scoped lang="less">

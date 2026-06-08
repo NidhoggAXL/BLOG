@@ -1,4 +1,4 @@
-export default defineNuxtRouteMiddleware(async (to) => {
+export default defineNuxtRouteMiddleware(async (to, from) => {
   const auth = useAuthStore()
 
   if (to.path === '/login') {
@@ -19,10 +19,16 @@ export default defineNuxtRouteMiddleware(async (to) => {
   }
 
   if (to.path === '/admin' || to.path.startsWith('/admin/')) {
-    // 已有登录态时直接放行，避免路由切换（如点击“编辑”）时重复请求 me 导致误重定向
+    const enteringFromOutsideAdmin =
+      import.meta.client && !from.path.startsWith('/admin')
+
+    // 从公开页进入后台时重新校验，避免 Pinia 中过期的登录态误放行
+    if (auth.user && enteringFromOutsideAdmin) {
+      await auth.fetchMe()
+    }
+
     if (auth.user) return
 
-    // 仅在未校验过时请求一次 me；若已明确未登录则直接跳转登录页
     if (!auth.checked) {
       await auth.fetchMe()
     }

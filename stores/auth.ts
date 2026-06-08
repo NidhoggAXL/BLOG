@@ -34,14 +34,13 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   async function logout() {
-    user.value = null
-    checked.value = false
     try {
       await $fetch('/api/auth/logout', {
         method: 'POST',
         ...fetchCredentials,
       })
     } finally {
+      user.value = null
       checked.value = true
       await navigateTo(
         { path: '/login', query: { loggedOut: '1' } },

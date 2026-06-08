@@ -1,4 +1,6 @@
 import type { RowDataPacket } from 'mysql2'
+import { getClientIp } from '../../utils/ai/rate-limit'
+import { checkLoginRateLimit } from '../../utils/auth/rate-limit'
 import { decryptPasswordCipher } from '../../utils/auth/rsa'
 import { verifyPassword } from '../../utils/auth/password'
 import { signAuthToken } from '../../utils/auth/jwt'
@@ -15,6 +17,12 @@ export default defineEventHandler(async (event) => {
   const config = useRuntimeConfig(event)
   if (!config.mysqlDatabase) {
     throw createError({ statusCode: 503, message: '请在 .env 中配置 MYSQL_DATABASE' })
+  }
+
+  const ip = getClientIp(event)
+  const limitPerMin = Number(config.authLoginRateLimitPerMin || 10)
+  if (!checkLoginRateLimit(ip, limitPerMin)) {
+    throw createError({ statusCode: 429, message: '登录尝试过于频繁，请稍后再试' })
   }
 
   const body = await readBody<{

@@ -6,6 +6,10 @@ definePageMeta({
   layout: false,
 })
 
+useHead({
+  meta: [{ name: 'robots', content: 'noindex, nofollow' }],
+})
+
 const route = useRoute()
 const auth = useAuthStore()
 
@@ -152,3 +156,7 @@ async function onSubmit() {
     </div>
   </div>
 </template>
+
+<style lang="less">
+@import "~/assets/styles/login.less";
+</style>
