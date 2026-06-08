@@ -1,0 +1,90 @@
+/* 双链 [[ 联想列表：挂于 .compose-cm-live-editor，使用后台 CSS 变量 */
+
+.compose-cm-live-editor .cm-tooltip.cm-tooltip-autocomplete {
+  background: var(--admin-toolbar-bg);
+  border: 1px solid var(--admin-border);
+  border-radius: 10px;
+  box-shadow:
+    0 10px 32px color-mix(in srgb, var(--accent) 14%, rgba(0, 0, 0, 0.22)),
+    0 0 0 1px color-mix(in srgb, var(--accent) 8%, transparent);
+  overflow: hidden;
+
+  width: 350px;
+  max-width: 350px;
+
+  & > ul {
+    font-family: inherit;
+    width: 350px !important;
+    min-width: 350px !important;
+    max-width: 350px !important;
+    max-height: 300px !important;
+    height: 300px;
+    margin: 0;
+    padding: 4px 0;
+    list-style: none;
+    overflow-x: hidden;
+    overflow-y: auto;
+    box-sizing: border-box;
+  }
+
+  .cm-completionIcon {
+    display: none !important;
+    width: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  & > ul > li {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    justify-content: center !important;
+    gap: 2px !important;
+    box-sizing: border-box !important;
+    height: 50px !important;
+    min-height: 50px !important;
+    max-height: 50px !important;
+    padding: 6px 14px !important;
+    line-height: 1.3 !important;
+    cursor: pointer;
+    color: var(--admin-text);
+    overflow: hidden;
+
+    &[aria-selected] {
+      background: var(--accent) !important;
+      color: var(--btn-primary-fg) !important;
+    }
+  }
+
+  .cm-completionLabel {
+    font-size: 16px !important;
+    font-weight: 600 !important;
+    font-style: normal !important;
+    color: inherit !important;
+    width: 100%;
+  }
+
+  .cm-completionDetail {
+    display: block !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    font-size: 12px !important;
+    font-weight: 400 !important;
+    font-style: normal !important;
+    opacity: 0.82 !important;
+    color: inherit !important;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  & > ul > li[aria-selected] .cm-completionDetail {
+    opacity: 0.92 !important;
+  }
+
+  .cm-completionMatchedText {
+    text-decoration: underline;
+    text-decoration-color: color-mix(in srgb, currentColor 55%, transparent);
+  }
+}

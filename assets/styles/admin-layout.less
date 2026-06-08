@@ -1,0 +1,115 @@
+// 后台全卡片布局（layouts/admin.vue 根节点 .admin-shell）
+
+.admin-shell {
+  --admin-shell-pad: 16px;
+  --admin-header-h: 56px;
+  --admin-sidebar-w: 240px;
+  --admin-card-gap: 14px;
+  --admin-card-pad: 18px;
+  --admin-card-radius: 14px;
+}
+
+.admin-shell__layout {
+  display: grid;
+  grid-template-columns: var(--admin-sidebar-w) minmax(0, 1fr);
+  gap: var(--admin-card-gap);
+  height: calc(100dvh - 2 * var(--admin-shell-pad));
+  align-items: stretch;
+}
+
+.admin-main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--admin-card-gap);
+  min-width: 0;
+  min-height: 0;
+}
+
+.admin-card {
+  margin: 0;
+  border-radius: var(--admin-card-radius);
+  border: 1px solid var(--admin-border);
+  background: var(--admin-card-bg);
+  box-shadow: var(--admin-card-shadow);
+  box-sizing: border-box;
+}
+
+.admin-card--pad {
+  padding: var(--admin-card-pad);
+}
+
+.admin-card--flush {
+  padding: 0;
+  overflow: hidden;
+}
+
+.admin-card--stretch {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.admin-sidebar-card {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.admin-toolbar-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-shrink: 0;
+  min-height: var(--admin-header-h);
+  height: var(--admin-header-h);
+  padding: 0 var(--admin-card-pad);
+}
+
+.admin-workspace {
+  padding: var(--admin-card-pad);
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.admin-workspace::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
+/** 全屏业务页：工作区仅作容器，由内层卡片承担边距与外观 */
+.admin-workspace--fill {
+  padding: 0;
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.admin-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--admin-card-gap);
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  overflow: visible;
+}
+
+.admin-page--fill {
+  overflow: hidden;
+}
+
+@media (max-width: 900px) {
+  .admin-shell__layout {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+
+  .admin-sidebar-card {
+    max-height: none;
+  }
+}

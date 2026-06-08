@@ -1,0 +1,217 @@
+@import './_tokens.less';
+@import './_card.less';
+@import './markdown-callouts.less';
+
+html {
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+}
+
+a {
+  color: var(--accent);
+  text-decoration: none;
+  transition: color 0.15s ease;
+
+  &:hover {
+    color: var(--accent-hover);
+  }
+}
+
+::selection {
+  background: var(--accent-soft);
+  color: var(--text);
+}
+
+// 隐藏滚动条（保留滚动能力）
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+
+  &::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+    display: none;
+  }
+}
+
+// Markdown 正文排版（不含 .markdown-body，避免与 post-read 阅读样式冲突）
+.prose:not(.markdown-body) {
+  max-width: 42rem;
+  line-height: 1.75;
+  color: var(--text);
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    margin: 2rem 0 0.75rem;
+    line-height: 1.3;
+    font-weight: 600;
+    color: var(--text);
+    scroll-margin-top: 1.5rem;
+
+    &:first-child {
+      margin-top: 0;
+    }
+  }
+
+  h1 {
+    font-size: 1.75rem;
+  }
+
+  h2 {
+    font-size: 1.35rem;
+    padding-bottom: 0.35rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  h3 {
+    font-size: 1.1rem;
+  }
+
+  p {
+    margin: 0 0 1rem;
+    color: var(--text-secondary);
+  }
+
+  ul,
+  ol {
+    margin: 0 0 1rem;
+    padding-left: 1.5rem;
+    color: var(--text-secondary);
+  }
+
+  li {
+    margin-bottom: 0.35rem;
+  }
+
+  blockquote {
+    margin: 1rem 0;
+    padding: 0.5rem 1rem;
+    border-left: 3px solid var(--accent);
+    background: var(--accent-soft);
+    color: var(--text-secondary);
+    border-radius: 0 4px 4px 0;
+  }
+
+  code {
+    font-family: var(--font-mono);
+    font-size: 0.875em;
+    padding: 0.15em 0.4em;
+    border-radius: 4px;
+    background: var(--code-bg);
+    color: var(--accent);
+  }
+
+  pre {
+    margin: 1rem 0;
+    padding: 1rem 1.25rem;
+    border-radius: 8px;
+    background: var(--code-bg);
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    overflow: hidden;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow);
+
+    &::-webkit-scrollbar {
+      width: 0;
+      height: 0;
+      display: none;
+    }
+
+    code {
+      display: block;
+      width: 100%;
+      min-width: 0;
+      padding: 0;
+      background: none;
+      color: var(--text);
+      font-size: 0.85rem;
+      line-height: 1.6;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+    }
+
+    // 覆盖 highlight.js 默认的 `overflow-x:auto`，优先按卡片宽度换行
+    code.hljs {
+      padding: 0 !important;
+      overflow-x: visible !important;
+      white-space: pre-wrap !important;
+      overflow-wrap: anywhere !important;
+      word-break: break-word !important;
+    }
+  }
+
+  .wikilink--missing {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0 0.2rem;
+    border-bottom: 1px dashed #ef4444;
+    color: #b91c1c;
+    background: rgba(239, 68, 68, 0.08);
+    border-radius: 4px;
+  }
+
+  .wikilink__badge {
+    font-size: 0.68rem;
+    line-height: 1;
+    padding: 0.12rem 0.3rem;
+    border-radius: 999px;
+    border: 1px solid #ef4444;
+    color: #ef4444;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+  }
+
+  img {
+    max-width: 100%;
+    border-radius: 8px;
+  }
+
+  hr {
+    margin: 2rem 0;
+    border: none;
+    border-top: 1px solid var(--border);
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1rem 0;
+    font-size: 0.9rem;
+  }
+
+  th,
+  td {
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--border);
+    text-align: left;
+  }
+
+  th {
+    background: var(--bg-hover);
+    font-weight: 600;
+  }
+}
+
+// highlight.js 主题覆盖（暗色可读）
+[data-theme='dark'] .hljs {
+  background: var(--code-bg) !important;
+  color: #e8e6e1;
+}

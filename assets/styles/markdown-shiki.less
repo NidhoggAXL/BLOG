@@ -1,0 +1,77 @@
+/* Shiki / 代码块：与 post-read-view 令牌一致，前后台共用 */
+
+.post-read.markdown-body,
+.post-article.markdown-body,
+.post-view-card__article,
+.post-detail .markdown-body,
+.post-immersive-md-editor .md-editor-preview,
+.compose-cm-live-editor .cm-callout-preview {
+  pre.shiki {
+    margin: 1.25em 0;
+    padding: 16px 18px !important;
+    border-radius: 10px;
+    border: 1px solid var(--post-read-border, var(--border));
+    overflow-x: auto;
+    font-size: 13.5px;
+    line-height: 1.6;
+    background: var(--post-read-pre-bg, var(--code-bg)) !important;
+    color: var(--post-read-heading, var(--text)) !important;
+  }
+
+  pre.shiki > code {
+    display: block;
+    padding: 0 !important;
+    margin: 0 !important;
+    background: transparent !important;
+    border: none !important;
+    white-space: pre;
+    word-break: normal;
+    overflow: visible;
+    font-size: inherit;
+    line-height: inherit;
+    color: inherit !important;
+  }
+
+  pre.shiki code span,
+  pre.shiki code .line {
+    color: var(--shiki-light);
+    background-color: transparent;
+  }
+
+  pre:not(.shiki) {
+    margin: 1.25em 0;
+    padding: 16px 18px !important;
+    border-radius: 10px;
+    border: 1px solid var(--post-read-border, var(--border));
+    overflow-x: auto;
+    font-size: 13.5px;
+    line-height: 1.6;
+    background: var(--post-read-pre-bg, var(--code-bg)) !important;
+    color: var(--post-read-heading, var(--text)) !important;
+  }
+
+  pre:not(.shiki) code {
+    background: transparent !important;
+    color: inherit !important;
+    border: none !important;
+    padding: 0 !important;
+  }
+}
+
+[data-theme='dark'] .post-read.markdown-body pre.shiki code span,
+[data-theme='dark'] .post-read.markdown-body pre.shiki code .line,
+[data-theme='dark'] .post-article.markdown-body pre.shiki code span,
+[data-theme='dark'] .post-article.markdown-body pre.shiki code .line,
+[data-theme='dark'] .post-detail .markdown-body pre.shiki code span,
+[data-theme='dark'] .post-detail .markdown-body pre.shiki code .line,
+html.theme-dark .post-read.markdown-body pre.shiki code span,
+html.theme-dark .post-read.markdown-body pre.shiki code .line,
+html.theme-dark .post-article.markdown-body pre.shiki code span,
+html.theme-dark .post-article.markdown-body pre.shiki code .line,
+html.dark .post-read.markdown-body pre.shiki code span,
+html.dark .post-read.markdown-body pre.shiki code .line,
+html.dark .post-article.markdown-body pre.shiki code span,
+html.dark .post-article.markdown-body pre.shiki code .line {
+  color: var(--shiki-dark);
+  background-color: transparent;
+}

@@ -1,0 +1,93 @@
+// 全站设计令牌（前台暖色为主）；日夜通过 html[data-theme] 切换
+:root,
+[data-theme='light'],
+html.theme-light {
+  color-scheme: light;
+
+  --bg: #f8f7f4;
+  --bg-elevated: #ffffff;
+  --bg-hover: #efede8;
+  --text: #1a1a18;
+  --text-secondary: #5c5c56;
+  --muted: #8a8a82;
+  --border: #e4e2dc;
+  --accent: #c45c26;
+  --accent-hover: #a84d1f;
+  --accent-soft: rgba(196, 92, 38, 0.1);
+  --code-bg: #f0eeea;
+  --shadow: 0 1px 3px rgba(26, 26, 24, 0.06);
+  --card-shadow: 0 2px 12px rgba(26, 26, 24, 0.07);
+  --card-radius: 12px;
+  --card-padding: 1.25rem;
+  --layout-gap: 1rem;
+  --content-gap: var(--layout-gap);
+  --topnav-height: 4.5rem;
+  --sidebar-width: 17.5rem;
+  --toc-rail-width: 15.5rem;
+  --font-sans: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --font-mono: 'Cascadia Code', 'Fira Code', Consolas, monospace;
+
+  /* 后台 / 通用别名（与前台同源） */
+  --app-bg: var(--bg);
+  --app-text: var(--text);
+  --app-text-muted: var(--muted);
+  --app-border: var(--border);
+
+  --admin-shell-bg: var(--bg);
+  --admin-body-bg: var(--bg);
+  --admin-toolbar-bg: var(--bg-elevated);
+  --admin-text: var(--text);
+  --admin-muted: var(--muted);
+  --admin-link: var(--text-secondary);
+  --admin-btn-ghost-fg: var(--text);
+  --admin-nav-hover: var(--bg-hover);
+  --admin-nav-active-bg: var(--accent-soft);
+  --admin-nav-active-ring: color-mix(in srgb, var(--accent) 32%, var(--border));
+  --admin-border: var(--border);
+  --admin-card-bg: var(--bg-elevated);
+  --admin-card-shadow: var(--card-shadow);
+
+  --accent-dim: var(--accent-soft);
+  --btn-primary-fg: #fffaf7;
+  --btn-primary-bg: linear-gradient(180deg, var(--accent-hover), var(--accent));
+  --btn-primary-shadow: color-mix(in srgb, var(--accent) 28%, transparent);
+
+  --chart-1: #c45c26;
+  --chart-2: #2d8a6e;
+  --chart-3: #b8860b;
+  --chart-4: #c43d4d;
+  --chart-5: #7a5a8c;
+  --chart-muted: var(--muted);
+  --chart-axis: var(--border);
+  --chart-grid: color-mix(in srgb, var(--accent) 14%, var(--border));
+  --chart-tooltip-bg: var(--bg-elevated);
+  --chart-tooltip-border: var(--border);
+}
+
+[data-theme='dark'],
+html.theme-dark {
+  color-scheme: dark;
+
+  --bg: #141413;
+  --bg-elevated: #1e1e1c;
+  --bg-hover: #2a2a28;
+  --text: #e8e6e1;
+  --text-secondary: #a8a6a0;
+  --muted: #787670;
+  --border: #333330;
+  --accent: #e07a3a;
+  --accent-hover: #f09050;
+  --accent-soft: rgba(224, 122, 58, 0.12);
+  --code-bg: #252523;
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  --card-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+
+  --chart-1: #e07a3a;
+  --chart-2: #3db896;
+  --chart-3: #e0b84a;
+  --chart-4: #e86a78;
+  --chart-5: #a88bc4;
+  --chart-grid: color-mix(in srgb, var(--accent) 18%, var(--border));
+  --chart-tooltip-bg: var(--bg-elevated);
+  --chart-tooltip-border: var(--border);
+}

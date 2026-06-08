@@ -1,0 +1,24 @@
+-- 用户表（登录认证）
+-- 请先 USE 你的业务库（与 .env 中 MYSQL_DATABASE 一致），再执行本文件
+
+SET NAMES utf8mb4;
+
+CREATE TABLE IF NOT EXISTS users (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  username VARCHAR(64) NOT NULL,
+  password_hash VARCHAR(255) NOT NULL COMMENT 'bcrypt',
+  display_name VARCHAR(255) NULL DEFAULT NULL,
+  email VARCHAR(191) NULL DEFAULT NULL,
+  bio TEXT NULL,
+  avatar_url VARCHAR(500) NULL DEFAULT NULL,
+  github_url VARCHAR(500) NULL DEFAULT NULL,
+  gitee_url VARCHAR(500) NULL DEFAULT NULL,
+  website_url VARCHAR(500) NULL DEFAULT NULL,
+  last_login_at DATETIME(3) NULL DEFAULT NULL,
+  password_changed_at DATETIME(3) NULL DEFAULT NULL,
+  created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_users_username (username),
+  UNIQUE KEY uk_users_email (email)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

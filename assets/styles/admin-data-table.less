@@ -1,0 +1,110 @@
+@import "./variables.less";
+
+/** 后台列表表格（文章、目录等）统一样式 */
+
+.admin-data-table-wrap {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  overflow: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+    width: 0;
+    height: 0;
+  }
+}
+
+.admin-data-table-wrap--auto {
+  min-height: 120px;
+}
+
+.admin-data-table {
+  width: max-content;
+  min-width: 100%;
+}
+
+.admin-data-table--clickable {
+  cursor: pointer;
+}
+
+.admin-data-table :deep(.el-table__body-wrapper) {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.admin-data-table :deep(.el-table__body-wrapper::-webkit-scrollbar) {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+.admin-data-table :deep(.el-scrollbar__bar) {
+  display: none !important;
+}
+
+.admin-data-table :deep(.el-table__header .cell),
+.admin-data-table :deep(.el-table__body .cell) {
+  text-align: center;
+  white-space: nowrap;
+  overflow: visible;
+  text-overflow: clip;
+}
+
+.admin-data-table :deep(.el-table__header th.el-table__cell) {
+  text-align: center;
+  font-weight: 600;
+  color: var(--admin-text);
+  background: var(--admin-toolbar-bg, var(--admin-nav-hover));
+}
+
+.admin-data-table :deep(.el-table__row) {
+  transition: background @transition-fast;
+}
+
+.admin-data-table :deep(.el-table__row:hover > td.el-table__cell) {
+  background: var(--admin-nav-hover) !important;
+}
+
+.admin-data-table :deep(.el-table__row.el-table__row--striped:hover > td.el-table__cell) {
+  background: var(--admin-nav-hover) !important;
+}
+
+.admin-data-table :deep(.admin-data-table__col-left .cell) {
+  text-align: left;
+  justify-content: flex-start;
+}
+
+.admin-data-table :deep(.admin-data-table__col-left--indent .cell) {
+  padding-left: 28px;
+}
+
+.admin-data-table__name,
+.admin-data-table__title {
+  font-weight: 500;
+  color: var(--admin-text);
+  text-align: left;
+}
+
+.admin-data-table__slug {
+  font-size: 12px;
+  color: var(--admin-muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.admin-data-table__muted {
+  font-size: 13px;
+  color: var(--admin-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.admin-data-table__actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  flex-wrap: nowrap;
+  white-space: nowrap;
+}

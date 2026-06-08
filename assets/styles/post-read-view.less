@@ -1,0 +1,484 @@
+/**
+ * 文章阅读页：居中 1200px 专栏 + GitHub Markdown 排版增强
+ * 配合 github-markdown-css / Shiki 服务端渲染的 body_html
+ */
+
+[data-theme='light'],
+html.theme-light {
+  --post-read-canvas: var(--bg);
+  --post-read-surface: var(--bg-elevated);
+  --post-read-surface-muted: var(--bg-hover);
+  --post-read-border: var(--border);
+  --post-read-shadow: var(--card-shadow);
+  --post-read-heading: var(--text);
+  --post-read-text: var(--text-secondary);
+  --post-read-muted: var(--muted);
+  --post-read-link: var(--accent);
+  --post-read-link-hover: var(--accent-hover);
+  --post-read-code-bg: var(--code-bg);
+  --post-read-pre-bg: var(--code-bg);
+  --post-read-blockquote-bg: var(--accent-soft);
+  --post-read-blockquote-border: var(--accent);
+  --post-read-hr: var(--border);
+  --post-read-table-border: var(--border);
+  --post-read-table-stripe: var(--bg-hover);
+}
+
+[data-theme='dark'],
+html.theme-dark {
+  --post-read-canvas: var(--bg);
+  --post-read-surface: var(--bg-elevated);
+  --post-read-surface-muted: var(--bg-hover);
+  --post-read-border: var(--border);
+  --post-read-shadow: var(--card-shadow);
+  --post-read-heading: var(--text);
+  --post-read-text: var(--text-secondary);
+  --post-read-muted: var(--muted);
+  --post-read-link: var(--accent);
+  --post-read-link-hover: var(--accent-hover);
+  --post-read-code-bg: var(--code-bg);
+  --post-read-pre-bg: var(--code-bg);
+  --compose-md-source-bg: var(--bg-elevated);
+  --compose-md-source-fence: var(--accent);
+  --post-read-blockquote-bg: var(--accent-soft);
+  --post-read-blockquote-border: var(--accent);
+  --post-read-hr: var(--border);
+  --post-read-table-border: var(--border);
+  --post-read-table-stripe: var(--bg-hover);
+}
+
+html {
+  --post-page-top-gap: 20px;
+  --post-read-page-margin: 20px;
+  --post-read-column-width: 1200px;
+  --post-read-max-width: 1200px;
+  --post-read-content-pad-x: 50px;
+  --post-read-content-pad-y: 20px;
+  --post-compose-panel-gap: 12px;
+  --post-compose-outline-width: 240px;
+  --post-compose-info-width: 260px;
+  --post-compose-rail-width: 140px;
+  --post-compose-rail-edge-margin: 0px;
+  --post-compose-center-width: 1200px;
+  --post-compose-center-pad: 30px;
+  --post-compose-stage-bottom: 20px;
+}
+
+@media (max-width: 768px) {
+  html {
+    --post-read-content-pad-x: 20px;
+    --post-read-content-pad-y: 16px;
+  }
+}
+
+/* 详情页：卡片内 1200px 居中专栏 */
+.post-read-body {
+  width: 100%;
+  max-width: var(--post-read-column-width, 1200px);
+  margin: 0 auto;
+  padding: var(--post-read-content-pad-y, 20px) var(--post-read-content-pad-x, 50px);
+  box-sizing: border-box;
+}
+
+/* GitHub Markdown 变量与主题对齐（阅读页 + 编辑 Live Preview） */
+[data-theme='light'] .post-read.markdown-body,
+[data-theme='light'] .post-immersive-md-editor .compose-cm-live-editor .cm-content.post-read,
+html.theme-light .post-read.markdown-body,
+html.theme-light .post-immersive-md-editor .compose-cm-live-editor .cm-content.post-read {
+  color-scheme: light;
+  --fgColor-default: var(--post-read-text);
+  --fgColor-muted: var(--post-read-muted);
+  --fgColor-accent: var(--post-read-link);
+  --bgColor-default: transparent;
+  --bgColor-muted: var(--post-read-surface-muted);
+  --borderColor-default: var(--post-read-border);
+}
+
+[data-theme='dark'] .post-read.markdown-body,
+[data-theme='dark'] .post-immersive-md-editor .compose-cm-live-editor .cm-content.post-read,
+html.theme-dark .post-read.markdown-body,
+html.theme-dark .post-immersive-md-editor .compose-cm-live-editor .cm-content.post-read,
+html.dark .post-read.markdown-body,
+html.dark .post-immersive-md-editor .compose-cm-live-editor .cm-content.post-read {
+  color-scheme: dark;
+  --fgColor-default: var(--post-read-text);
+  --fgColor-muted: var(--post-read-muted);
+  --fgColor-accent: var(--post-read-link);
+  --bgColor-default: transparent;
+  --bgColor-muted: var(--post-read-surface-muted);
+  --borderColor-default: var(--post-read-border);
+}
+
+/* 阅读页文章容器 */
+.post-read.markdown-body {
+  display: block;
+  flex: none;
+  overflow: visible;
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 0;
+}
+
+/* 阅读页 + 编辑 Live Preview 共用正文排版（以详情页 .post-read 为准） */
+.post-read.markdown-body,
+.post-immersive-md-editor .compose-cm-live-editor .cm-content.post-read.markdown-body {
+  font-size: 17px;
+  line-height: 1.8;
+  color: var(--post-read-text);
+  background: transparent;
+  word-wrap: break-word;
+  box-sizing: border-box;
+
+  &::before,
+  &::after {
+    display: none;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    color: var(--post-read-heading);
+    font-weight: 650;
+    line-height: 1.35;
+    margin-top: 1.6em;
+    margin-bottom: 0.65em;
+    border-bottom: none;
+    padding-bottom: 0;
+  }
+
+  h1 {
+    font-size: 2em;
+    margin-top: 0;
+    padding-bottom: 0.35em;
+    border-bottom: 1px solid var(--post-read-hr);
+  }
+
+  h2 {
+    font-size: 1.5em;
+    padding-bottom: 0.25em;
+    border-bottom: 1px solid var(--post-read-hr);
+  }
+
+  h3 {
+    font-size: 1.25em;
+  }
+
+  p,
+  ul,
+  ol,
+  dl,
+  blockquote,
+  pre,
+  table,
+  details {
+    margin-top: 0;
+    margin-bottom: 1em;
+  }
+
+  a {
+    color: var(--post-read-link);
+    text-decoration: none;
+    font-weight: 500;
+
+    &:hover {
+      color: var(--post-read-link-hover);
+      text-decoration: underline;
+    }
+  }
+
+  blockquote {
+    margin: 1.25em 0;
+    padding: 12px 16px;
+    color: var(--post-read-muted);
+    background: var(--post-read-blockquote-bg);
+    border-left: 4px solid var(--post-read-blockquote-border);
+    border-radius: 0 8px 8px 0;
+  }
+
+  hr {
+    height: 1px;
+    margin: 2em 0;
+    background: var(--post-read-hr);
+    border: 0;
+  }
+
+  :not(pre) > code {
+    padding: 0.15em 0.45em;
+    font-size: 0.9em;
+    color: var(--post-read-heading);
+    background: var(--post-read-code-bg);
+    border: 1px solid var(--post-read-border);
+    border-radius: 6px;
+  }
+
+  pre {
+    margin: 1.25em 0;
+    padding: 16px 18px !important;
+    background: var(--post-read-pre-bg) !important;
+    border: 1px solid var(--post-read-border);
+    border-radius: 10px;
+    overflow-x: auto;
+  }
+
+  pre code {
+    background: transparent !important;
+    border: none !important;
+    padding: 0 !important;
+    font-size: 13.5px;
+    line-height: 1.6;
+  }
+
+  img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 8px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  }
+
+  table {
+    display: block;
+    width: 100%;
+    overflow-x: auto;
+    border-collapse: collapse;
+    margin: 1.25em 0;
+    font-size: 0.95em;
+  }
+
+  th,
+  td {
+    padding: 10px 14px;
+    border: 1px solid var(--post-read-table-border);
+  }
+
+  th {
+    color: var(--post-read-heading);
+    background: var(--post-read-surface-muted);
+    font-weight: 600;
+  }
+
+  tr:nth-child(2n) td {
+    background: var(--post-read-table-stripe);
+  }
+
+  .wikilink {
+    padding: 1px 6px;
+    border-radius: 4px;
+    background: var(--post-read-code-bg);
+    border: 1px dashed var(--post-read-border);
+  }
+}
+
+/* Shiki 代码块（阅读页 + 编辑预览内 callout 等） */
+.post-read.markdown-body pre.shiki,
+.post-immersive-md-editor .compose-cm-live-editor .cm-content pre.shiki,
+.post-immersive-md-editor .compose-cm-live-editor .cm-callout-preview pre.shiki {
+  background: var(--post-read-pre-bg) !important;
+  border-color: var(--post-read-border);
+}
+
+[data-theme='light'] .post-read.markdown-body pre.shiki,
+html.theme-light .post-read.markdown-body pre.shiki,
+[data-theme='light'] .post-immersive-md-editor .compose-cm-live-editor .cm-content pre.shiki,
+html.theme-light .post-immersive-md-editor .compose-cm-live-editor .cm-content pre.shiki {
+  color: var(--post-read-heading, var(--text)) !important;
+}
+
+[data-theme='dark'] .post-read.markdown-body pre.shiki,
+html.theme-dark .post-read.markdown-body pre.shiki,
+html.dark .post-read.markdown-body pre.shiki,
+[data-theme='dark'] .post-immersive-md-editor .compose-cm-live-editor .cm-content pre.shiki,
+html.theme-dark .post-immersive-md-editor .compose-cm-live-editor .cm-content pre.shiki,
+html.dark .post-immersive-md-editor .compose-cm-live-editor .cm-content pre.shiki {
+  color: var(--post-read-heading, var(--text)) !important;
+}
+
+.post-read.markdown-body pre.shiki code span,
+.post-read.markdown-body pre.shiki code .line,
+.post-immersive-md-editor .compose-cm-live-editor .cm-content pre.shiki code span,
+.post-immersive-md-editor .compose-cm-live-editor .cm-content pre.shiki code .line {
+  color: var(--shiki-light);
+  background-color: transparent;
+}
+
+[data-theme='dark'] .post-read.markdown-body pre.shiki code span,
+[data-theme='dark'] .post-read.markdown-body pre.shiki code .line,
+html.theme-dark .post-read.markdown-body pre.shiki code span,
+html.theme-dark .post-read.markdown-body pre.shiki code .line,
+html.dark .post-read.markdown-body pre.shiki code span,
+html.dark .post-read.markdown-body pre.shiki code .line,
+[data-theme='dark'] .post-immersive-md-editor .compose-cm-live-editor .cm-content pre.shiki code span,
+[data-theme='dark'] .post-immersive-md-editor .compose-cm-live-editor .cm-content pre.shiki code .line,
+html.theme-dark .post-immersive-md-editor .compose-cm-live-editor .cm-content pre.shiki code span,
+html.theme-dark .post-immersive-md-editor .compose-cm-live-editor .cm-content pre.shiki code .line,
+html.dark .post-immersive-md-editor .compose-cm-live-editor .cm-content pre.shiki code span,
+html.dark .post-immersive-md-editor .compose-cm-live-editor .cm-content pre.shiki code .line {
+  color: var(--shiki-dark);
+  background-color: transparent;
+}
+
+/* 前台阅读：容器在卡片内，无需后台详情页的宽边距 */
+.post-read-body--public {
+  max-width: none;
+  margin: 0;
+  padding: 0;
+}
+
+/* 编辑页：与详情页相同的卡片专栏布局 */
+.post-compose-page__main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+  overflow-x: hidden;
+  background: var(--post-read-canvas, var(--admin-body-bg));
+}
+
+.post-compose-page__stage {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: hidden;
+  padding: 0 0 var(--post-compose-stage-bottom, 20px);
+  box-sizing: border-box;
+  background: var(--post-read-canvas, var(--admin-body-bg));
+}
+
+.post-compose-page__stage > .post-immersive-md-editor {
+  flex: 1;
+  min-height: 0;
+}
+
+/* Markdown 编辑卡片 */
+.post-immersive-md-editor .compose-panel-card--editor {
+  .compose-cm-live-editor .cm-editor {
+    background: transparent !important;
+  }
+}
+
+/* Markdown 源码区 */
+.post-immersive-md-editor .compose-panel-card--editor .cm-content.compose-md-source {
+  padding: 12px !important;
+  font-family: 'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
+  font-size: 14px;
+  line-height: 1.65;
+  color: var(--post-read-text, var(--admin-text));
+}
+
+html.theme-dark .post-immersive-md-editor .compose-panel-card--editor {
+  background: var(--compose-md-source-bg, #12151c);
+  border-color: rgba(255, 255, 255, 0.1);
+
+  .compose-cm-live-editor .cm-editor {
+    background: var(--compose-md-source-bg, #12151c) !important;
+  }
+
+  .cm-content.compose-md-source {
+    color: #e5e7eb;
+    caret-color: #93c5fd;
+  }
+
+  .cm-content.compose-md-source .cm-placeholder {
+    color: #6b7280;
+  }
+}
+
+/* 分屏：右侧渲染预览（与详情页 post-read 一致） */
+.post-immersive-md-editor .compose-md-preview__article.post-read.markdown-body {
+  padding: 0;
+
+  :is(h1, h2, h3, h4, h5, h6) {
+    scroll-margin-top: 12px;
+  }
+}
+
+/* CodeMirror Live Preview 代码块：覆盖默认浅色 widget 背景 */
+.post-immersive-md-editor .compose-cm-live-editor .cm-codeblock-widget {
+  margin: 1.25em 0;
+  background-color: var(--post-read-pre-bg) !important;
+  border: 1px solid var(--post-read-border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.post-immersive-md-editor .compose-cm-live-editor .cm-codeblock-widget pre {
+  margin: 0 !important;
+  padding: 8px 0 !important;
+  background-color: var(--post-read-pre-bg) !important;
+  color: var(--post-read-text) !important;
+}
+
+.post-immersive-md-editor .compose-cm-live-editor .cm-codeblock-widget code {
+  background: transparent !important;
+}
+
+.post-immersive-md-editor .compose-cm-live-editor .cm-codeblock-line {
+  color: inherit;
+}
+
+.post-immersive-md-editor .compose-cm-live-editor .cm-codeblock-fence {
+  color: var(--post-read-muted) !important;
+}
+
+.post-immersive-md-editor .compose-cm-live-editor .cm-codeblock-widget .hljs {
+  background: transparent !important;
+  color: var(--post-read-text);
+}
+
+html.theme-dark .post-immersive-md-editor .compose-cm-live-editor .cm-codeblock-widget,
+html.theme-dark .post-immersive-md-editor .compose-cm-live-editor .cm-codeblock-widget pre {
+  background-color: var(--post-read-pre-bg) !important;
+}
+
+/* CodeMirror：与阅读页行高一致，修复光标定位偏移 */
+.post-immersive-md-editor .compose-cm-live-editor {
+  .cm-line {
+    padding: 0 !important;
+    line-height: 1.8 !important;
+    font-size: 17px;
+  }
+
+  .cm-content.post-read {
+    font-size: 17px;
+    line-height: 1.8;
+    box-sizing: border-box;
+  }
+
+  .cm-header-1 {
+    font-size: 2em;
+    font-weight: 650;
+    line-height: 1.35;
+  }
+
+  .cm-header-2 {
+    font-size: 1.5em;
+    font-weight: 650;
+    line-height: 1.35;
+    padding-bottom: 0.25em;
+  }
+
+  .cm-header-3 {
+    font-size: 1.25em;
+    font-weight: 650;
+    line-height: 1.35;
+  }
+
+  .cm-codeblock-line {
+    font-size: 17px !important;
+    line-height: 1.8 !important;
+    min-height: calc(17px * 1.8) !important;
+    padding: 0 16px !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .post-compose-page__stage {
+    padding: 12px;
+  }
+}

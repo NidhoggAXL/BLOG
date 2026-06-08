@@ -1,0 +1,48 @@
+// ElMessageBox / 弹层：与全站令牌对齐，并保证叠在 el-drawer 之上
+
+.el-overlay.app-message-box-overlay,
+.el-overlay:has(+ .el-message-box.app-message-box) {
+  z-index: 5000 !important;
+}
+
+.el-message-box.app-message-box {
+  z-index: 5001 !important;
+  --el-messagebox-width: min(420px, calc(100vw - 32px));
+  border-radius: 12px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  box-shadow: var(--card-shadow);
+
+  .el-message-box__header {
+    padding-bottom: 8px;
+  }
+
+  .el-message-box__title {
+    color: var(--text);
+    font-weight: 650;
+  }
+
+  .el-message-box__headerbtn .el-message-box__close {
+    color: var(--muted);
+
+    &:hover {
+      color: var(--text);
+    }
+  }
+
+  .el-message-box__content {
+    color: var(--text-secondary);
+  }
+
+  .el-message-box__message {
+    color: var(--text-secondary);
+  }
+
+  .el-message-box__btns {
+    padding-top: 4px;
+  }
+
+  .el-message-box__status.el-message-box-icon--warning {
+    color: var(--el-color-warning);
+  }
+}

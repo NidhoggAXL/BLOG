@@ -1,0 +1,104 @@
+/** 文章正文排版补充（wikilink 嵌入等），与 post-read-view.less 共用令牌 */
+
+.post-article-markdown-base() {
+  background-color: transparent;
+  color: var(--post-read-text, var(--text));
+  font-size: inherit;
+  line-height: inherit;
+  max-width: none;
+  box-sizing: border-box;
+
+  a {
+    color: var(--post-read-link, var(--accent));
+  }
+
+  blockquote {
+    border-left-color: var(--post-read-blockquote-border, var(--accent)) !important;
+  }
+
+  .wikilink-embed {
+    margin: 1.25em 0;
+    border: 1px solid var(--post-read-border, var(--border));
+    border-radius: 10px;
+    background: var(--post-read-surface, var(--bg-elevated));
+    overflow: visible;
+  }
+
+  .wikilink-embed__header {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--post-read-border, var(--border));
+    background: var(--post-read-surface-muted, var(--bg-hover));
+  }
+
+  .wikilink-embed__title {
+    font-weight: 600;
+    font-size: 14px;
+    text-decoration: none;
+    color: var(--post-read-link, var(--accent));
+
+    &:hover {
+      color: var(--post-read-link-hover, var(--accent-hover));
+      text-decoration: underline;
+    }
+  }
+
+  .wikilink-embed__body {
+    padding: 0;
+    overflow: visible;
+    max-height: none;
+
+    &.markdown-body {
+      padding: 16px 20px 20px;
+    }
+  }
+
+  .wikilink--missing {
+    color: var(--post-read-muted, var(--muted));
+    background: var(--post-read-surface-muted, var(--bg-hover));
+    border: 1px dashed var(--post-read-border, var(--border));
+  }
+}
+
+.post-read.markdown-body,
+.post-article.markdown-body,
+.post-view-card__article.markdown-body,
+.post-detail .markdown-body {
+  .post-article-markdown-base();
+}
+
+[data-theme='light'] .post-read.markdown-body,
+[data-theme='light'] .post-article.markdown-body,
+[data-theme='light'] .post-view-card__article.markdown-body,
+html.theme-light .post-read.markdown-body,
+html.theme-light .post-article.markdown-body,
+html.theme-light .post-view-card__article.markdown-body {
+  color-scheme: light;
+  color: var(--post-read-text, var(--text));
+  background-color: transparent;
+  --fgColor-default: var(--post-read-text, var(--text));
+  --fgColor-muted: var(--post-read-muted, var(--muted));
+  --fgColor-accent: var(--post-read-link, var(--accent));
+  --bgColor-default: transparent;
+  --bgColor-muted: var(--post-read-surface-muted, var(--bg-hover));
+  --borderColor-default: var(--post-read-border, var(--border));
+}
+
+[data-theme='dark'] .post-read.markdown-body,
+[data-theme='dark'] .post-article.markdown-body,
+[data-theme='dark'] .post-view-card__article.markdown-body,
+html.theme-dark .post-read.markdown-body,
+html.theme-dark .post-article.markdown-body,
+html.theme-dark .post-view-card__article.markdown-body,
+html.dark .post-read.markdown-body,
+html.dark .post-article.markdown-body,
+html.dark .post-view-card__article.markdown-body {
+  color-scheme: dark;
+  color: var(--post-read-text, var(--text));
+  background-color: transparent;
+  --fgColor-default: var(--post-read-text, var(--text));
+  --fgColor-muted: var(--post-read-muted, var(--muted));
+  --fgColor-accent: var(--post-read-link, var(--accent));
+  --bgColor-default: transparent;
+  --bgColor-muted: var(--post-read-surface-muted, var(--bg-hover));
+  --borderColor-default: var(--post-read-border, var(--border));
+}

@@ -1,0 +1,236 @@
+/* 简约登录页 */
+
+.login-page {
+  position: relative;
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+  background: var(--bg);
+  color: var(--text);
+  overflow: hidden;
+}
+
+.login-page__backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+}
+
+.login-page__bg {
+  position: absolute;
+  inset: -24px;
+  background:
+    linear-gradient(140deg, rgba(15, 23, 42, 0.46), rgba(30, 64, 175, 0.28)),
+    url('https://images.unsplash.com/photo-1522199710521-72d69614c702?auto=format&fit=crop&w=2200&q=80')
+      center / cover no-repeat;
+  filter: blur(10px);
+  transform: scale(1.04);
+  animation: login-bg-drift 14s ease-in-out infinite alternate;
+}
+
+.login-shell {
+  position: relative;
+  z-index: 1;
+  width: min(560px, 100%);
+}
+
+.login-panel {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 560px;
+  padding: 44px 40px 36px;
+  text-align: center;
+  color: #0f172a;
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 20px;
+  box-shadow:
+    0 26px 56px rgba(15, 23, 42, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  animation: login-panel-in 300ms ease-out;
+}
+
+.login-panel__avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 84px;
+  height: 84px;
+  margin: 0 auto 16px;
+  border-radius: 50%;
+  border: 1px solid rgba(59, 130, 246, 0.28);
+  background: rgba(59, 130, 246, 0.1);
+}
+
+.login-panel__avatar-inner {
+  font-size: 30px;
+  font-weight: 700;
+  color: #1d4ed8;
+}
+
+.login-panel__title {
+  margin: 0 0 6px;
+  font-size: 28px;
+  font-weight: 700;
+}
+
+.login-panel__subtitle {
+  margin: 0 0 24px;
+  font-size: 15px;
+  color: #64748b;
+}
+
+.login-panel__form {
+  text-align: left;
+}
+
+.login-panel__error {
+  margin: 0 0 12px;
+  padding: 8px 10px;
+  font-size: 13px;
+  color: #b91c1c;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  text-align: center;
+}
+
+.login-panel__field {
+  position: relative;
+  margin-bottom: 16px;
+}
+
+.login-panel__input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 13px 14px;
+  font-size: 15px;
+  color: #0f172a;
+  background: #fff;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+
+  &::placeholder {
+    color: #94a3b8;
+  }
+
+  &:focus {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+  }
+
+  &:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+  }
+}
+
+.login-panel__input--password {
+  padding-right: 44px;
+}
+
+.login-panel__password-toggle {
+  position: absolute;
+  right: 9px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  color: #64748b;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+
+  &:hover:not(:disabled) {
+    color: #0f172a;
+  }
+}
+
+.login-panel__remember {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 10px;
+  font-size: 14px;
+  color: #475569;
+  user-select: none;
+  cursor: pointer;
+}
+
+.login-panel__remember-input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: #2563eb;
+}
+
+.login-panel__submit {
+  width: 100%;
+  margin-top: 10px;
+  padding: 13px 18px;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: #fff;
+  background: #2563eb;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.08s ease;
+
+  &:hover:not(:disabled) {
+    background: #1d4ed8;
+  }
+
+  &:active:not(:disabled) {
+    transform: translateY(1px);
+  }
+
+  &:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+  }
+}
+
+@media (max-width: 480px) {
+  .login-page {
+    padding: 12px;
+  }
+
+  .login-panel {
+    max-width: none;
+    padding: 30px 22px 24px;
+  }
+}
+
+@keyframes login-bg-drift {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(-8px, -12px, 0);
+  }
+}
+
+@keyframes login-panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

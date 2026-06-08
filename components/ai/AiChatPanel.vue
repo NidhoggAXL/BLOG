@@ -1,0 +1,523 @@
+<script setup lang="ts">
+import { Delete, Promotion } from '@element-plus/icons-vue'
+import { storeToRefs } from 'pinia'
+import type { ChatMessageItem } from '~/types/ai'
+import { useAiChatStore } from '~/stores/aiChat'
+import { parseMarkdownToHtml } from '~/utils/markedSetup'
+import { confirmAction } from '~/utils/confirmDialog'
+import {
+  isRagFallbackOnlyAnswer,
+  sanitizeRagAssistantAnswer,
+} from '~/utils/ragAnswerSanitize'
+
+export type { ChatMessageItem } from '~/types/ai'
+
+const props = defineProps<{
+  disabled?: boolean
+}>()
+
+const aiChat = useAiChatStore()
+const { messages, assistantHtmlById, sending, hasMessages, isStreaming } =
+  storeToRefs(aiChat)
+
+const input = ref('')
+const renderTimers = new Map<string, ReturnType<typeof setTimeout>>()
+
+const canSend = computed(
+  () => !props.disabled && !sending.value && input.value.trim().length > 0,
+)
+
+const canClear = computed(
+  () => hasMessages.value && !sending.value && !isStreaming.value,
+)
+
+function uid() {
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+}
+
+function clearRenderTimers() {
+  for (const timer of renderTimers.values()) clearTimeout(timer)
+  renderTimers.clear()
+}
+
+async function renderAssistantMessage(msg: ChatMessageItem) {
+  if (msg.role !== 'assistant' || msg.error) {
+    assistantHtmlById.value[msg.id] = ''
+    return
+  }
+  const text = msg.content.trim()
+  if (!text) {
+    assistantHtmlById.value[msg.id] = ''
+    return
+  }
+  try {
+    assistantHtmlById.value[msg.id] = await parseMarkdownToHtml(text)
+  } catch {
+    assistantHtmlById.value[msg.id] = ''
+  }
+}
+
+function scheduleAssistantRender(msg: ChatMessageItem) {
+  if (msg.role !== 'assistant' || msg.error) return
+  const pending = renderTimers.get(msg.id)
+  if (pending) clearTimeout(pending)
+  const delay = msg.streaming ? 150 : 0
+  renderTimers.set(
+    msg.id,
+    setTimeout(() => {
+      renderTimers.delete(msg.id)
+      void renderAssistantMessage(msg)
+    }, delay),
+  )
+}
+
+watch(
+  messages,
+  (list) => {
+    for (const msg of list) scheduleAssistantRender(msg)
+  },
+  { deep: true, immediate: true },
+)
+
+onBeforeUnmount(() => {
+  clearRenderTimers()
+})
+
+async function onClearSession() {
+  if (!canClear.value) return
+  try {
+    await confirmAction(
+      '确定清空本次访问的所有问答记录吗？此操作不可恢复。',
+      '清空对话',
+      {
+        confirmButtonText: '清空',
+        cancelButtonText: '取消',
+      },
+    )
+    clearRenderTimers()
+    aiChat.clearSession()
+    input.value = ''
+    ElMessage.success('对话已清空')
+  } catch {
+    /* 用户取消 */
+  }
+}
+
+async function onSend() {
+  const text = input.value.trim()
+  if (!text || sending.value || props.disabled) return
+
+  const userMsg: ChatMessageItem = { id: uid(), role: 'user', content: text }
+  const assistantId = uid()
+  messages.value.push(userMsg, {
+    id: assistantId,
+    role: 'assistant',
+    content: '',
+    streaming: true,
+  })
+  input.value = ''
+  sending.value = true
+
+  try {
+    const res = await fetch('/api/public/ai/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: text }),
+    })
+
+    if (!res.ok) {
+      const err = (await res.json().catch(() => null)) as { message?: string } | null
+      throw new Error(err?.message || `请求失败 (${res.status})`)
+    }
+
+    const reader = res.body?.getReader()
+    if (!reader) throw new Error('无法读取流式响应')
+
+    const decoder = new TextDecoder()
+    let buffer = ''
+    const assistant = () => messages.value.find((m) => m.id === assistantId)
+
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+      buffer += decoder.decode(value, { stream: true })
+      const blocks = buffer.split('\n\n')
+      buffer = blocks.pop() ?? ''
+
+      for (const block of blocks) {
+        const lines = block.split('\n')
+        let eventName = 'message'
+        let dataLine = ''
+        for (const line of lines) {
+          if (line.startsWith('event:')) eventName = line.slice(6).trim()
+          if (line.startsWith('data:')) dataLine = line.slice(5).trim()
+        }
+        if (!dataLine) continue
+
+        const target = assistant()
+        if (!target) continue
+
+        if (eventName === 'chunk') {
+          const payload = JSON.parse(dataLine) as { content?: string }
+          target.content += payload.content ?? ''
+        } else if (eventName === 'sources') {
+          const payload = JSON.parse(dataLine) as {
+            sources?: { slug: string; title: string }[]
+          }
+          target.sources = payload.sources ?? []
+        } else if (eventName === 'error') {
+          const payload = JSON.parse(dataLine) as { message?: string }
+          target.content = payload.message || '问答失败'
+          target.error = true
+        } else if (eventName === 'done') {
+          target.streaming = false
+          if (!target.error && target.content) {
+            target.content = sanitizeRagAssistantAnswer(target.content, {
+              hasRetrievedChunks: (target.sources?.length ?? 0) > 0,
+            })
+            if (isRagFallbackOnlyAnswer(target.content)) {
+              target.sources = []
+            }
+          }
+        }
+      }
+    }
+
+    const target = assistant()
+    if (target) {
+      target.streaming = false
+      if (!target.error && target.content) {
+        target.content = sanitizeRagAssistantAnswer(target.content, {
+          hasRetrievedChunks: (target.sources?.length ?? 0) > 0,
+        })
+        if (isRagFallbackOnlyAnswer(target.content)) {
+          target.sources = []
+        }
+      }
+    }
+  } catch (e: unknown) {
+    const err = e as { message?: string }
+    const target = messages.value.find((m) => m.id === assistantId)
+    if (target) {
+      target.content = err.message || 'AI 服务不可用，请确认 Ollama 已启动'
+      target.error = true
+      target.streaming = false
+    }
+  } finally {
+    sending.value = false
+    nextTick(() => scrollToBottom())
+  }
+}
+
+const listRef = ref<HTMLElement | null>(null)
+
+function scrollToBottom() {
+  const el = listRef.value
+  if (el) el.scrollTop = el.scrollHeight
+}
+
+watch(
+  () => messages.value.map((m) => m.content).join(''),
+  () => nextTick(() => scrollToBottom()),
+)
+</script>
+
+<template>
+  <div class="ai-chat-panel">
+    <header class="ai-chat-panel__toolbar">
+      <el-tooltip
+        :disabled="canClear"
+        content="回答生成中，请稍后再清空"
+        placement="bottom"
+      >
+        <span class="ai-chat-panel__clear-wrap">
+          <el-button
+            text
+            type="danger"
+            :icon="Delete"
+            :disabled="!canClear"
+            @click="onClearSession"
+          >
+            清空对话
+          </el-button>
+        </span>
+      </el-tooltip>
+    </header>
+
+    <div ref="listRef" class="ai-chat-panel__messages">
+      <p v-if="!messages.length" class="ai-chat-panel__empty">
+        向知识库提问，AI 将根据已发布笔记回答并附上来源链接。
+      </p>
+      <article
+        v-for="msg in messages"
+        :key="msg.id"
+        class="ai-chat-panel__msg"
+        :class="[
+          `ai-chat-panel__msg--${msg.role}`,
+          { 'ai-chat-panel__msg--error': msg.error },
+        ]"
+      >
+        <p class="ai-chat-panel__msg-label">{{ msg.role === 'user' ? '你' : '知识库' }}</p>
+        <p v-if="msg.role === 'user'" class="ai-chat-panel__msg-body">
+          {{ msg.content }}
+        </p>
+        <div
+          v-else-if="msg.error"
+          class="ai-chat-panel__msg-body ai-chat-panel__msg-body--plain"
+        >
+          {{ msg.content }}
+        </div>
+        <div
+          v-else
+          class="ai-chat-panel__msg-body markdown-body ai-chat-panel__markdown"
+        >
+          <!-- eslint-disable-next-line vue/no-v-html -->
+          <div v-if="assistantHtmlById[msg.id]" v-html="assistantHtmlById[msg.id]" />
+          <p v-else-if="msg.content.trim()" class="ai-chat-panel__msg-fallback">
+            {{ msg.content }}
+          </p>
+          <span v-if="msg.streaming" class="ai-chat-panel__cursor">▍</span>
+        </div>
+        <ul
+          v-if="msg.sources?.length && !isRagFallbackOnlyAnswer(msg.content)"
+          class="ai-chat-panel__sources"
+        >
+          <li v-for="src in msg.sources" :key="src.slug">
+            <NuxtLink :to="`/blog/${src.slug}`">{{ src.title }}</NuxtLink>
+          </li>
+        </ul>
+      </article>
+    </div>
+
+    <form class="ai-chat-panel__composer" @submit.prevent="onSend">
+      <el-input
+        v-model="input"
+        type="textarea"
+        :rows="3"
+        resize="none"
+        placeholder="例如：我写过哪些关于 Nuxt 的内容？"
+        :disabled="disabled || sending"
+        @keydown.enter.exact.prevent="onSend"
+      />
+      <el-button
+        type="primary"
+        :icon="Promotion"
+        :loading="sending"
+        :disabled="!canSend"
+        native-type="submit"
+      >
+        发送
+      </el-button>
+    </form>
+  </div>
+</template>
+
+<style scoped lang="less">
+.ai-chat-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.ai-chat-panel__toolbar {
+  flex-shrink: 0;
+  display: flex;
+  justify-content: flex-end;
+  padding: 0 2px 8px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 4px;
+}
+
+.ai-chat-panel__clear-wrap {
+  display: inline-flex;
+}
+
+.ai-chat-panel__messages {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 4px 2px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ai-chat-panel__empty {
+  margin: 0;
+  padding: 24px 8px;
+  text-align: center;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--muted);
+}
+
+.ai-chat-panel__msg {
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+}
+
+.ai-chat-panel__msg--user {
+  background: var(--accent-soft, rgba(64, 158, 255, 0.08));
+  border-color: var(--accent, #409eff);
+}
+
+.ai-chat-panel__msg--assistant {
+  background: var(--bg-hover, rgba(0, 0, 0, 0.02));
+}
+
+.ai-chat-panel__msg--error {
+  border-color: var(--el-color-danger-light-5, #fab6b6);
+}
+
+.ai-chat-panel__msg-label {
+  margin: 0 0 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.ai-chat-panel__msg-body {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.55;
+  word-break: break-word;
+  color: var(--text);
+}
+
+.ai-chat-panel__msg--assistant .ai-chat-panel__msg-body {
+  color: var(--text);
+}
+
+.ai-chat-panel__msg-body--plain {
+  white-space: pre-wrap;
+}
+
+.ai-chat-panel__markdown {
+  padding: 0;
+  font-size: 14px;
+  background: transparent !important;
+  color: var(--text);
+
+  :deep(p),
+  :deep(ul),
+  :deep(ol),
+  :deep(blockquote),
+  :deep(li),
+  :deep(h1),
+  :deep(h2),
+  :deep(h3),
+  :deep(h4),
+  :deep(h5),
+  :deep(h6),
+  :deep(strong),
+  :deep(em),
+  :deep(code) {
+    color: inherit;
+  }
+
+  :deep(a) {
+    color: var(--accent);
+  }
+
+  :deep(p),
+  :deep(ul),
+  :deep(ol),
+  :deep(blockquote) {
+    margin-top: 0;
+    margin-bottom: 0.65em;
+  }
+
+  :deep(p:last-child),
+  :deep(ul:last-child),
+  :deep(ol:last-child) {
+    margin-bottom: 0;
+  }
+
+  :deep(ul),
+  :deep(ol) {
+    padding-left: 1.25em;
+  }
+}
+
+.ai-chat-panel__msg-fallback {
+  margin: 0;
+  white-space: pre-wrap;
+  color: var(--text);
+}
+
+.ai-chat-panel__cursor {
+  display: inline-block;
+  margin-left: 2px;
+  color: var(--text);
+  animation: ai-blink 1s step-end infinite;
+}
+
+@keyframes ai-blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+.ai-chat-panel__sources {
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+
+  a {
+    color: var(--accent);
+    text-decoration: none;
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+}
+
+.ai-chat-panel__composer {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+</style>
+
+<style lang="less">
+/** 跟随站点 data-theme，避免 github-markdown 仅按 OS prefers-color-scheme 把正文染成白字 */
+[data-theme='light'] .ai-chat-panel__markdown.markdown-body,
+html.theme-light .ai-chat-panel__markdown.markdown-body {
+  color-scheme: light;
+  color: var(--text);
+  background-color: transparent !important;
+  --fgColor-default: var(--text);
+  --fgColor-muted: var(--muted);
+  --fgColor-accent: var(--accent);
+  --bgColor-default: transparent;
+  --bgColor-muted: var(--bg-hover);
+  --borderColor-default: var(--border);
+}
+
+[data-theme='dark'] .ai-chat-panel__markdown.markdown-body,
+html.theme-dark .ai-chat-panel__markdown.markdown-body,
+html.dark .ai-chat-panel__markdown.markdown-body {
+  color-scheme: dark;
+  color: var(--text);
+  background-color: transparent !important;
+  --fgColor-default: var(--text);
+  --fgColor-muted: var(--muted);
+  --fgColor-accent: var(--accent);
+  --bgColor-default: transparent;
+  --bgColor-muted: var(--bg-hover);
+  --borderColor-default: var(--border);
+}
+</style>
