@@ -6,26 +6,42 @@ const tocRailOpen = ref(true);
 export function useBlogReadPanels() {
   const route = useRoute();
 
+  const isBlogLanding = computed(() => route.path === "/blog");
+
+  const isBlogDirBrowse = computed(() => /^\/blog\/dir\/\d+$/.test(route.path));
+
   const isBlogPostDetail = computed(() => {
     const path = route.path;
+    if (path.startsWith("/blog/dir/")) return false;
     return path.startsWith("/blog/") && path.length > "/blog/".length;
   });
 
-  /** 前台主内容区统一内边距（顶栏与侧栏/主卡片间距） */
+  const isBlogReadMode = computed(
+    () => isBlogPostDetail.value || isBlogDirBrowse.value,
+  );
+
+  /** 仅知识图谱保留顶栏个人信息卡 */
+  const showPublicTopNav = computed(() => route.path === "/knowledge-graph");
+
+  /** 前台主内容区统一内边距（侧栏/主卡片间距） */
   const isPublicContentInset = computed(() => {
-    const path = route.path;
-    if (path === "/blog" || path === "/knowledge-graph") return true;
-    return isBlogPostDetail.value;
+    if (isBlogLanding.value) return false;
+    if (route.path === "/knowledge-graph") return true;
+    return isBlogReadMode.value;
   });
 
   const isKnowledgeGraphPage = computed(() => route.path === "/knowledge-graph");
 
-  const showPublicSidebar = computed(() => !isKnowledgeGraphPage.value);
+  const showPublicSidebar = computed(() => isBlogReadMode.value);
 
   return {
     sidebarOpen,
     tocRailOpen,
+    isBlogLanding,
+    isBlogDirBrowse,
     isBlogPostDetail,
+    isBlogReadMode,
+    showPublicTopNav,
     isPublicContentInset,
     isKnowledgeGraphPage,
     showPublicSidebar,

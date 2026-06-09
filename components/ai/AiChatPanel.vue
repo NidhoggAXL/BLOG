@@ -58,16 +58,15 @@ async function renderAssistantMessage(msg: ChatMessageItem) {
 }
 
 function scheduleAssistantRender(msg: ChatMessageItem) {
-  if (msg.role !== 'assistant' || msg.error) return
+  if (msg.role !== 'assistant' || msg.error || msg.streaming) return
   const pending = renderTimers.get(msg.id)
   if (pending) clearTimeout(pending)
-  const delay = msg.streaming ? 150 : 0
   renderTimers.set(
     msg.id,
     setTimeout(() => {
       renderTimers.delete(msg.id)
       void renderAssistantMessage(msg)
-    }, delay),
+    }, 0),
   )
 }
 
@@ -224,27 +223,29 @@ watch(
 
 <template>
   <div class="ai-chat-panel">
-    <header class="ai-chat-panel__toolbar">
-      <el-tooltip
-        :disabled="canClear"
-        content="回答生成中，请稍后再清空"
-        placement="bottom"
-      >
-        <span class="ai-chat-panel__clear-wrap">
-          <el-button
-            text
-            type="danger"
-            :icon="Delete"
-            :disabled="!canClear"
-            @click="onClearSession"
+    <div class="ai-chat-panel__body">
+      <section class="ai-chat-panel__messages-card">
+        <header class="ai-chat-panel__toolbar">
+          <el-tooltip
+            :disabled="canClear"
+            content="回答生成中，请稍后再清空"
+            placement="bottom"
           >
-            清空对话
-          </el-button>
-        </span>
-      </el-tooltip>
-    </header>
+            <span class="ai-chat-panel__clear-wrap">
+              <el-button
+                text
+                type="danger"
+                :icon="Delete"
+                :disabled="!canClear"
+                @click="onClearSession"
+              >
+                清空对话
+              </el-button>
+            </span>
+          </el-tooltip>
+        </header>
 
-    <div ref="listRef" class="ai-chat-panel__messages">
+        <div ref="listRef" class="ai-chat-panel__messages">
       <p v-if="!messages.length" class="ai-chat-panel__empty">
         向知识库提问，AI 将根据已发布笔记回答并附上来源链接。
       </p>
@@ -267,6 +268,13 @@ watch(
         >
           {{ msg.content }}
         </div>
+        <p
+          v-else-if="msg.streaming"
+          class="ai-chat-panel__msg-body ai-chat-panel__msg-body--streaming"
+        >
+          <span class="ai-chat-panel__stream-text">{{ msg.content }}</span
+          ><span class="ai-chat-panel__cursor" aria-hidden="true">▍</span>
+        </p>
         <div
           v-else
           class="ai-chat-panel__msg-body markdown-body ai-chat-panel__markdown"
@@ -276,7 +284,6 @@ watch(
           <p v-else-if="msg.content.trim()" class="ai-chat-panel__msg-fallback">
             {{ msg.content }}
           </p>
-          <span v-if="msg.streaming" class="ai-chat-panel__cursor">▍</span>
         </div>
         <ul
           v-if="msg.sources?.length && !isRagFallbackOnlyAnswer(msg.content)"
@@ -287,11 +294,17 @@ watch(
           </li>
         </ul>
       </article>
-    </div>
+        </div>
+      </section>
 
-    <form class="ai-chat-panel__composer" @submit.prevent="onSend">
+      <form class="ai-chat-panel__composer" @submit.prevent="onSend">
+      <label class="ai-chat-panel__composer-label" for="ai-chat-input">
+        输入问题
+      </label>
       <el-input
+        id="ai-chat-input"
         v-model="input"
+        class="ai-chat-panel__input"
         type="textarea"
         :rows="3"
         resize="none"
@@ -308,7 +321,8 @@ watch(
       >
         发送
       </el-button>
-    </form>
+      </form>
+    </div>
   </div>
 </template>
 
@@ -320,12 +334,32 @@ watch(
   min-height: 0;
 }
 
+.ai-chat-panel__body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ai-chat-panel__messages-card {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 10px 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--ai-panel-card-border, var(--ai-panel-border, var(--border)));
+  background: var(--ai-panel-messages-bg, var(--ai-panel-msg-assistant-bg, var(--bg-hover)));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  overflow: hidden;
+}
+
 .ai-chat-panel__toolbar {
   flex-shrink: 0;
   display: flex;
   justify-content: flex-end;
-  padding: 0 2px 8px;
-  border-bottom: 1px solid var(--border);
+  padding: 0 2px 6px;
   margin-bottom: 4px;
 }
 
@@ -349,34 +383,46 @@ watch(
   text-align: center;
   font-size: 13px;
   line-height: 1.55;
-  color: var(--muted);
+  color: var(--ai-panel-muted, var(--muted));
 }
 
 .ai-chat-panel__msg {
   padding: 10px 12px;
   border-radius: 10px;
-  border: 1px solid var(--border);
-  background: var(--bg);
+  border: 1px solid var(--ai-panel-border, var(--border));
+  background: var(--ai-panel-msg-bg, var(--bg));
+  box-shadow: var(--ai-panel-msg-shadow, none);
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
 }
 
 .ai-chat-panel__msg--user {
-  background: var(--accent-soft, rgba(64, 158, 255, 0.08));
-  border-color: var(--accent, #409eff);
+  background: var(--ai-panel-msg-user-bg, var(--accent-soft));
+  border-color: var(--ai-panel-msg-user-border, var(--accent));
 }
 
 .ai-chat-panel__msg--assistant {
-  background: var(--bg-hover, rgba(0, 0, 0, 0.02));
+  background: var(--ai-panel-msg-assistant-bg, var(--bg-hover));
 }
 
 .ai-chat-panel__msg--error {
   border-color: var(--el-color-danger-light-5, #fab6b6);
 }
 
+.ai-chat-panel__msg-body--streaming {
+  white-space: pre-wrap;
+}
+
+.ai-chat-panel__stream-text {
+  color: var(--ai-panel-text, var(--text));
+}
+
 .ai-chat-panel__msg-label {
   margin: 0 0 6px;
   font-size: 11px;
   font-weight: 600;
-  color: var(--muted);
+  color: var(--ai-panel-muted, var(--muted));
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
@@ -386,11 +432,11 @@ watch(
   font-size: 14px;
   line-height: 1.55;
   word-break: break-word;
-  color: var(--text);
+  color: var(--ai-panel-text, var(--text));
 }
 
 .ai-chat-panel__msg--assistant .ai-chat-panel__msg-body {
-  color: var(--text);
+  color: var(--ai-panel-text, var(--text));
 }
 
 .ai-chat-panel__msg-body--plain {
@@ -421,7 +467,7 @@ watch(
   }
 
   :deep(a) {
-    color: var(--accent);
+    color: var(--ai-panel-accent, var(--accent));
   }
 
   :deep(p),
@@ -452,8 +498,8 @@ watch(
 
 .ai-chat-panel__cursor {
   display: inline-block;
-  margin-left: 2px;
-  color: var(--text);
+  margin-left: 1px;
+  color: var(--ai-panel-accent, var(--accent));
   animation: ai-blink 1s step-end infinite;
 }
 
@@ -473,7 +519,8 @@ watch(
   font-size: 13px;
 
   a {
-    color: var(--accent);
+    color: var(--ai-panel-accent, var(--accent));
+    font-weight: 500;
     text-decoration: none;
 
     &:hover {
@@ -486,9 +533,20 @@ watch(
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding-top: 8px;
-  border-top: 1px solid var(--border);
+  gap: 10px;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid var(--ai-panel-card-border, var(--ai-panel-composer-border, var(--border)));
+  background: var(--ai-panel-composer-bg, var(--bg-hover));
+  box-shadow: var(--ai-panel-composer-shadow, none);
+}
+
+.ai-chat-panel__composer-label {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--ai-panel-muted, var(--muted));
 }
 </style>
 
@@ -497,11 +555,11 @@ watch(
 [data-theme='light'] .ai-chat-panel__markdown.markdown-body,
 html.theme-light .ai-chat-panel__markdown.markdown-body {
   color-scheme: light;
-  color: var(--text);
+  color: var(--ai-panel-text, #000);
   background-color: transparent !important;
-  --fgColor-default: var(--text);
-  --fgColor-muted: var(--muted);
-  --fgColor-accent: var(--accent);
+  --fgColor-default: var(--ai-panel-text, #000);
+  --fgColor-muted: var(--ai-panel-muted, #333);
+  --fgColor-accent: var(--ai-panel-accent, #145a82);
   --bgColor-default: transparent;
   --bgColor-muted: var(--bg-hover);
   --borderColor-default: var(--border);
@@ -511,11 +569,11 @@ html.theme-light .ai-chat-panel__markdown.markdown-body {
 html.theme-dark .ai-chat-panel__markdown.markdown-body,
 html.dark .ai-chat-panel__markdown.markdown-body {
   color-scheme: dark;
-  color: var(--text);
+  color: var(--ai-panel-text, #f0f3f6);
   background-color: transparent !important;
-  --fgColor-default: var(--text);
-  --fgColor-muted: var(--muted);
-  --fgColor-accent: var(--accent);
+  --fgColor-default: var(--ai-panel-text, #f0f3f6);
+  --fgColor-muted: var(--ai-panel-muted, #9aa6b2);
+  --fgColor-accent: var(--ai-panel-accent, #e63946);
   --bgColor-default: transparent;
   --bgColor-muted: var(--bg-hover);
   --borderColor-default: var(--border);

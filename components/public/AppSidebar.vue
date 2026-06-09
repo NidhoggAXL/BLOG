@@ -4,7 +4,7 @@ const route = useRoute();
 const { toggleTheme, isDark } = useAppTheme();
 const { loadPosts, loadDirectories, posts } = useBlogContent();
 const { refreshPublicContent, refreshing } = usePublicContentRefresh();
-const { sidebarOpen, isBlogPostDetail } = useBlogReadPanels();
+const { sidebarOpen, isBlogReadMode } = useBlogReadPanels();
 
 await Promise.all([loadDirectories(), loadPosts()]);
 
@@ -28,7 +28,7 @@ const {
 } = useSiteMenu();
 
 const sidebarCollapsed = computed(
-  () => isBlogPostDetail.value && !sidebarOpen.value,
+  () => isBlogReadMode.value && !sidebarOpen.value,
 );
 
 const activeSlug = computed(() => {

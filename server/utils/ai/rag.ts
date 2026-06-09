@@ -2,10 +2,6 @@ import type { H3Event } from 'h3'
 import type { AiRuntimeConfig } from './config'
 import { searchSimilarChunks, type RetrievedChunk } from './embeddings'
 import { ollamaChatStream, type ChatMessage } from './ollama'
-import {
-  isRagFallbackOnlyAnswer,
-  sanitizeRagAssistantAnswer,
-} from '../../../utils/ragAnswerSanitize'
 
 export type RagSource = { slug: string; title: string }
 
@@ -100,16 +96,10 @@ export async function* streamRagAnswer(
 
   const messages = buildRagMessages(trimmed, chunks)
   try {
-    let full = ''
     for await (const text of ollamaChatStream(ai, messages)) {
-      full += text
-    }
-    const cleaned = sanitizeRagAssistantAnswer(full, { hasRetrievedChunks: true })
-    if (isRagFallbackOnlyAnswer(cleaned)) {
-      yield { type: 'sources', sources: [] }
-    }
-    if (cleaned) {
-      yield { type: 'chunk', content: cleaned }
+      if (text) {
+        yield { type: 'chunk', content: text }
+      }
     }
   } catch (e: unknown) {
     const err = e as { message?: string }

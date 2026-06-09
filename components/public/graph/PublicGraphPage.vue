@@ -143,17 +143,16 @@ defineExpose({
   padding: 0;
   border-radius: 8px;
   border: 1px solid var(--border);
-  background: color-mix(in srgb, var(--bg-elevated) 92%, transparent);
+  background: color-mix(in srgb, var(--bg-elevated) 55%, transparent);
   color: var(--muted);
   cursor: pointer;
-  backdrop-filter: blur(8px);
   transition:
     color 0.15s ease,
     background 0.15s ease;
 
   &:hover {
     color: var(--text);
-    background: color-mix(in srgb, var(--bg-hover) 90%, transparent);
+    background: color-mix(in srgb, var(--bg-hover) 50%, transparent);
   }
 }
 

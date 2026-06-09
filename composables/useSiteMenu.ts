@@ -146,6 +146,21 @@ function folderHasSubfolders(node: TreeNode): boolean {
   return !!node.children?.length;
 }
 
+function findFirstFileSlug(node: TreeNode): string | null {
+  if (node.type === "file" && node.slug) return node.slug;
+  if (node.type !== "folder" || !node.children?.length) return null;
+  for (const child of node.children) {
+    const hit = findFirstFileSlug(child);
+    if (hit) return hit;
+  }
+  return null;
+}
+
+function parseDirId(nodeId: string): number | null {
+  const m = /^dir:(\d+)$/.exec(nodeId);
+  return m ? Number(m[1]) : null;
+}
+
 function collectExpandableFolderIds(nodes: TreeNode[]): string[] {
   const ids: string[] = [];
   for (const n of nodes) {
@@ -165,6 +180,9 @@ export function useSiteMenu() {
   const expandedIds = useState<string[]>("menu-level-expanded-ids", () => []);
 
   const currentNodes = computed(() => fileTree.value);
+  const rootDirectories = computed(() =>
+    fileTree.value.filter((node) => node.type === "folder"),
+  );
   const breadcrumbs = computed(() => [{ id: null, name: "根目录" }]);
   const canInlineExpand = computed(() => true);
   const canExpandCollapse = computed(
@@ -186,12 +204,61 @@ export function useSiteMenu() {
 
   function goBack() {}
 
+  /** 一级目录下所有二级文件夹 id */
+  function collectSecondLevelFolderIds(rootNode: TreeNode): string[] {
+    if (rootNode.type !== "folder" || !rootNode.children?.length) return [];
+    return rootNode.children
+      .filter((child) => child.type === "folder")
+      .map((child) => child.id);
+  }
+
+  /**
+   * 仅展开当前一级目录：其下二级目录展开，其余一级目录折叠；
+   * 若提供 slug，同时展开到该文章所在的深层路径。
+   */
+  function syncExpandedForRootFolder(rootFolderId: string, slug?: string) {
+    const rootNode = findNodeById(fileTree.value, rootFolderId);
+    if (!rootNode || rootNode.type !== "folder") return;
+
+    const next = new Set<string>();
+    next.add(rootFolderId);
+    for (const id of collectSecondLevelFolderIds(rootNode)) {
+      next.add(id);
+    }
+
+    if (slug) {
+      const folderPath = findFolderPathToSlug(fileTree.value, slug) ?? [];
+      for (const id of folderPath) next.add(id);
+    }
+
+    saveExpanded(next);
+  }
+
   function syncPathForSlug(slug: string) {
     const folderPath = findFolderPathToSlug(fileTree.value, slug);
-    if (folderPath) {
-      const next = new Set(expandedIds.value);
-      for (const id of folderPath) next.add(id);
-      saveExpanded(next);
+    if (!folderPath?.length) {
+      saveExpanded(new Set());
+      return;
+    }
+    syncExpandedForRootFolder(folderPath[0]!, slug);
+  }
+
+  function syncPathForFolder(dirId: number) {
+    syncExpandedForRootFolder(`dir:${dirId}`);
+  }
+
+  async function enterRootDirectory(node: TreeNode) {
+    if (node.type !== "folder") return;
+    const firstSlug = findFirstFileSlug(node);
+    if (firstSlug) {
+      syncExpandedForRootFolder(node.id, firstSlug);
+      await navigateTo(`/blog/${firstSlug}`);
+      return;
+    }
+    syncExpandedForRootFolder(node.id);
+    const dirId = parseDirId(node.id);
+    if (dirId != null) {
+      await navigateTo(`/blog/dir/${dirId}`);
     }
   }
 
@@ -214,10 +281,16 @@ export function useSiteMenu() {
     return expandedSet.value.has(id);
   }
 
+  function folderNameById(dirId: number): string | null {
+    const node = findNodeById(fileTree.value, `dir:${dirId}`);
+    return node?.name ?? null;
+  }
+
   return {
     fileTree,
     pathIds,
     currentNodes,
+    rootDirectories,
     breadcrumbs,
     canInlineExpand,
     canExpandCollapse,
@@ -225,6 +298,9 @@ export function useSiteMenu() {
     goToBreadcrumb,
     goBack,
     syncPathForSlug,
+    syncPathForFolder,
+    enterRootDirectory,
+    folderNameById,
     toggleExpand,
     expandAll,
     collapseAll,

@@ -11,7 +11,7 @@ const { onMarkdownContentClick } = useSpaMarkdownLinkClick("/blog/");
 <template>
   <article class="post-detail">
     <header class="post-header">
-      <NuxtLink to="/blog" class="back-link">← 返回文件树</NuxtLink>
+      <NuxtLink to="/blog" class="back-link">← 返回首页</NuxtLink>
       <h1 class="post-title">{{ post.title }}</h1>
       <div class="post-meta">
         <time :datetime="post.date">{{ post.date }}</time>

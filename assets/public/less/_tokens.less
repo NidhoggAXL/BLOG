@@ -1,2 +1,101 @@
-// 前台设计令牌：复用全站 tokens
+// 前台设计令牌：复用全站 tokens，亮色模式叠加壁纸融合配色
 @import '../../less/_tokens.less';
+
+[data-theme='light'],
+html.theme-light {
+  --public-bg-image: url('../../imgs/亮色背景图.jpg');
+  /* 冷色薄雾遮罩，贴合雨景插画且少挡画面 */
+  --public-bg-overlay: linear-gradient(
+    165deg,
+    rgba(228, 236, 244, 0.06) 0%,
+    rgba(218, 230, 240, 0.1) 50%,
+    rgba(208, 222, 234, 0.08) 100%
+  );
+}
+
+[data-theme='dark'],
+html.theme-dark {
+  --public-bg-image: url('../../imgs/暗色主题背景.jpg');
+  /* 暗色薄雾遮罩，保留红黑插画细节 */
+  --public-bg-overlay: linear-gradient(
+    165deg,
+    rgba(8, 10, 14, 0.12) 0%,
+    rgba(12, 8, 10, 0.18) 50%,
+    rgba(6, 6, 8, 0.14) 100%
+  );
+}
+
+/* 仅前台亮色：雨景插画适配 — 清晰字体 + 可见轮廓的透卡 */
+[data-theme='light'] .app-shell,
+html.theme-light .app-shell {
+  --bg: rgba(255, 255, 255, 0.1);
+  --bg-elevated: rgba(255, 255, 255, 0.16);
+  --bg-hover: rgba(255, 255, 255, 0.24);
+  /* 深蓝灰字色：亮雾区/暗林区均可读 */
+  --text: #0a1218;
+  --text-secondary: #162430;
+  --muted: #3a4f5e;
+  --border: rgba(255, 255, 255, 0.55);
+  /* 雨景蓝强调色，与森林绿、龙猫蓝呼应 */
+  --accent: #145a82;
+  --accent-hover: #0c4466;
+  --accent-soft: rgba(20, 90, 130, 0.14);
+  --code-bg: rgba(255, 255, 255, 0.4);
+  --shadow: 0 1px 4px rgba(10, 24, 36, 0.08);
+  --card-shadow: var(--public-card-shadow);
+  /* 透卡轮廓：浅外沿 + 细暗描边，壁纸仍清晰 */
+  --public-card-bg: rgba(255, 255, 255, 0.16);
+  --public-card-border: rgba(255, 255, 255, 0.58);
+  --public-card-ring: rgba(14, 32, 48, 0.18);
+  --public-card-shadow:
+    0 0 0 1px var(--public-card-ring),
+    0 4px 20px rgba(8, 20, 32, 0.1);
+  --public-card-shadow-hover:
+    0 0 0 1px rgba(14, 32, 48, 0.24),
+    0 6px 24px rgba(8, 20, 32, 0.12);
+  /* 双层浅色光晕，插画复杂区域仍易读 */
+  --public-text-shadow:
+    0 0 1px rgba(255, 255, 255, 1),
+    0 1px 3px rgba(255, 255, 255, 0.9),
+    0 0 12px rgba(255, 255, 255, 0.42);
+  --public-heading-shadow:
+    0 0 1px rgba(255, 255, 255, 1),
+    0 1px 4px rgba(255, 255, 255, 0.95),
+    0 2px 14px rgba(255, 255, 255, 0.5);
+}
+
+/* 仅前台暗色：红黑插画适配 — 亮字 + 半透明深卡 */
+[data-theme='dark'] .app-shell,
+html.theme-dark .app-shell {
+  --bg: rgba(8, 10, 14, 0.28);
+  --bg-elevated: rgba(12, 14, 18, 0.42);
+  --bg-hover: rgba(18, 20, 26, 0.52);
+  --text: #f0f3f6;
+  --text-secondary: #d4dae2;
+  --muted: #9aa6b2;
+  --border: rgba(255, 255, 255, 0.22);
+  --accent: #e63946;
+  --accent-hover: #ff4d5a;
+  --accent-soft: rgba(230, 57, 70, 0.18);
+  --code-bg: rgba(8, 10, 14, 0.55);
+  --shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+  --card-shadow: var(--public-card-shadow);
+  --public-card-bg: rgba(10, 12, 16, 0.45);
+  --public-card-border: rgba(255, 255, 255, 0.26);
+  --public-card-ring: rgba(230, 57, 70, 0.22);
+  --public-card-shadow:
+    0 0 0 1px var(--public-card-ring),
+    0 4px 22px rgba(0, 0, 0, 0.32);
+  --public-card-shadow-hover:
+    0 0 0 1px rgba(230, 57, 70, 0.38),
+    0 6px 26px rgba(0, 0, 0, 0.38);
+  /* 暗色描边阴影，亮区仍可读 */
+  --public-text-shadow:
+    0 0 1px rgba(0, 0, 0, 0.95),
+    0 1px 4px rgba(0, 0, 0, 0.8),
+    0 0 10px rgba(0, 0, 0, 0.45);
+  --public-heading-shadow:
+    0 0 1px rgba(0, 0, 0, 1),
+    0 1px 5px rgba(0, 0, 0, 0.88),
+    0 2px 14px rgba(0, 0, 0, 0.55);
+}

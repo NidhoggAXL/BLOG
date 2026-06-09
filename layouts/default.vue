@@ -8,25 +8,35 @@ if (!auth.checked) {
   await auth.fetchMe()
 }
 
-const { sidebarOpen, tocRailOpen, isBlogPostDetail, isPublicContentInset, showPublicSidebar } =
-  useBlogReadPanels()
+const {
+  sidebarOpen,
+  tocRailOpen,
+  isBlogLanding,
+  isBlogReadMode,
+  showPublicTopNav,
+  isPublicContentInset,
+  showPublicSidebar,
+} = useBlogReadPanels()
 </script>
 
 <template>
   <div
     class="app-shell"
-    :class="{ 'app-shell--blog-read': isBlogPostDetail }"
+    :class="{
+      'app-shell--blog-read': isBlogReadMode,
+      'app-shell--blog-landing': isBlogLanding,
+    }"
   >
-    <PublicTopNav />
+    <PublicTopNav v-if="showPublicTopNav" />
     <div
       class="app-body"
       :class="{
-        'app-body--blog-read': isBlogPostDetail,
+        'app-body--blog-read': isBlogReadMode,
         'app-body--content-inset': isPublicContentInset,
       }"
     >
       <button
-        v-if="isBlogPostDetail"
+        v-if="isBlogReadMode"
         type="button"
         class="blog-read-edge blog-read-edge--left"
         :aria-label="sidebarOpen ? '隐藏目录' : '显示目录'"
@@ -47,7 +57,7 @@ const { sidebarOpen, tocRailOpen, isBlogPostDetail, isPublicContentInset, showPu
         </main>
       </div>
       <button
-        v-if="isBlogPostDetail"
+        v-if="isBlogReadMode"
         type="button"
         class="blog-read-edge blog-read-edge--right"
         :aria-label="tocRailOpen ? '隐藏大纲与双链' : '显示大纲与双链'"
@@ -77,7 +87,6 @@ const { sidebarOpen, tocRailOpen, isBlogPostDetail, isPublicContentInset, showPu
   box-sizing: border-box;
   padding: var(--layout-gap);
   gap: var(--layout-gap);
-  background: var(--bg);
   color: var(--text);
   overflow: hidden;
 }
