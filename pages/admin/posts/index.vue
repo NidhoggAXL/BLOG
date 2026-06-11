@@ -23,10 +23,10 @@ import {
   isSearchActive,
   type PostStatusFilter,
 } from "~/utils/postSearch";
+import { expandLibraryAncestors } from "~/utils/libraryDirectory";
 import {
   ALL_POSTS_NAV_ID,
   buildPostsAdminNavTree,
-  expandLibraryAncestors,
   filterPostsAdminNavTree,
   findPostsAdminNavNode,
   firstPostsAdminNavNode,

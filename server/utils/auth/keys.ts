@@ -1,5 +1,6 @@
 import fs from 'node:fs'
 import path from 'node:path'
+import { resolveAuthKeysRoot } from './projectRoot'
 
 let rsaPublicPem: string | null = null
 let rsaPrivatePem: string | null = null
@@ -8,7 +9,7 @@ let jwtPublicPem: string | null = null
 
 function resolveKeyPath(relativeOrAbsolute: string): string {
   if (path.isAbsolute(relativeOrAbsolute)) return relativeOrAbsolute
-  return path.resolve(process.cwd(), relativeOrAbsolute)
+  return path.resolve(resolveAuthKeysRoot(), relativeOrAbsolute)
 }
 
 function readPem(filePath: string): string {

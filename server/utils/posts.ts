@@ -138,7 +138,6 @@ export async function getPublicPostDetail(
     linkBasePath,
     includeWikilinkSlugs: false,
     includeWikilinkRefs: true,
-    publishedOnly: true,
   });
   if (!detail) return null;
 

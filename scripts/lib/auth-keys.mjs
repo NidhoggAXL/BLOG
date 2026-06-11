@@ -1,5 +1,5 @@
 /**
- * 生成/确保 RSA 传输密钥与 JWT RS256 密钥对（PEM）
+ * CLI 用（npm run auth:keys）。运行时逻辑见 server/utils/auth/ensureAuthKeys.ts
  */
 import fs from 'node:fs'
 import path from 'node:path'
