@@ -65,7 +65,18 @@ jobs:
           script: |
             set -e
             export PATH="/usr/local/bin:/usr/bin:$PATH"
-            cd /root/blog
-            npm ci --omit=dev
+            cd ${{ secrets.DEPLOY_PATH }}
+
+            pm2 stop blog 2>/dev/null || true
+
+            LOCK_HASH=$(md5sum package-lock.json | awk '{print $1}')
+            if [ -f .deploy-lock-hash ] && [ "$(cat .deploy-lock-hash)" = "$LOCK_HASH" ]; then
+              echo ">>> package-lock.json 未变，跳过 npm ci"
+            else
+              echo ">>> 安装生产依赖"
+              NODE_OPTIONS="--max-old-space-size=512" npm ci --omit=dev --no-audit --no-fund
+              echo "$LOCK_HASH" > .deploy-lock-hash
+            fi
+
             pm2 restart blog || pm2 start ecosystem.config.cjs
             pm2 save
