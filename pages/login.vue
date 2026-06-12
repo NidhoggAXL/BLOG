@@ -1,6 +1,10 @@
 <script setup lang="ts">
 import { Hide, View } from '@element-plus/icons-vue'
-import { encryptPasswordRsaOaep, fetchAuthPublicKey } from '~/utils/authClientCrypto'
+import {
+  canUseSubtleCrypto,
+  encryptPasswordRsaOaep,
+  fetchAuthPublicKey,
+} from '~/utils/authClientCrypto'
 
 definePageMeta({
   layout: false,
@@ -48,11 +52,19 @@ async function onSubmit() {
 
   submitting.value = true
   try {
-    const publicKey = await fetchAuthPublicKey()
-    const passwordCipher = await encryptPasswordRsaOaep(publicKey, p)
+    let loginBody: { username: string; passwordCipher?: string; password?: string }
+    if (canUseSubtleCrypto()) {
+      const publicKey = await fetchAuthPublicKey()
+      loginBody = {
+        username: u,
+        passwordCipher: await encryptPasswordRsaOaep(publicKey, p),
+      }
+    } else {
+      loginBody = { username: u, password: p }
+    }
     await $fetch('/api/auth/login', {
       method: 'POST',
-      body: { username: u, passwordCipher },
+      body: loginBody,
     })
     if (import.meta.client) {
       localStorage.setItem(STORAGE_REMEMBER, rememberPassword.value ? '1' : '0')

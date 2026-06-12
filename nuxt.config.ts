@@ -34,6 +34,8 @@ export default defineNuxtConfig({
     authBootstrapUsername: process.env.AUTH_BOOTSTRAP_USERNAME || "admin",
     authBootstrapPassword: process.env.AUTH_BOOTSTRAP_PASSWORD || "admin123",
     authLoginRateLimitPerMin: Number(process.env.AUTH_LOGIN_RATE_LIMIT_PER_MIN || 10),
+    authCookieSecure: process.env.AUTH_COOKIE_SECURE !== "false",
+    authAllowPlainPassword: process.env.AUTH_ALLOW_PLAIN_PASSWORD === "true",
     /** 公开展示 wikilink 链接前缀 */
     publicWikilinkBasePath: process.env.PUBLIC_WIKILINK_BASE_PATH || "/blog",
     /** 后台 wikilink 链接前缀 */
@@ -51,7 +53,6 @@ export default defineNuxtConfig({
     },
   },
 
-  /** Nginx 自签名 HTTPS 反代：信任 X-Forwarded-*，配合 PM2 中 NITRO_TRUST_PROXY=true */
   nitro: {
     compressPublicAssets: true,
   },

@@ -28,6 +28,7 @@ export default defineEventHandler(async (event) => {
   const body = await readBody<{
     username?: string
     passwordCipher?: string
+    password?: string
   }>(event)
 
   const username = String(body.username ?? '').trim()
@@ -35,9 +36,19 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, message: '请输入用户名' })
   }
 
-  const plainPassword = decryptPasswordCipher(body.passwordCipher ?? '')
-  if (!plainPassword) {
-    throw createError({ statusCode: 400, message: '请输入密码' })
+  let plainPassword: string
+  if (body.passwordCipher) {
+    plainPassword = decryptPasswordCipher(body.passwordCipher)
+  } else if (config.authAllowPlainPassword) {
+    plainPassword = String(body.password ?? '')
+    if (!plainPassword) {
+      throw createError({ statusCode: 400, message: '请输入密码' })
+    }
+  } else {
+    throw createError({
+      statusCode: 400,
+      message: '当前环境需要 HTTPS 登录，或未启用明文密码',
+    })
   }
 
   const pool = useMysqlPool()

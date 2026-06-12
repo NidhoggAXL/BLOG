@@ -44,3 +44,8 @@ export async function fetchAuthPublicKey(): Promise<string> {
   const res = await $fetch<{ publicKey: string }>('/api/auth/public-key')
   return res.publicKey
 }
+
+/** 非 HTTPS（非 localhost）时浏览器不提供 crypto.subtle */
+export function canUseSubtleCrypto(): boolean {
+  return typeof globalThis.crypto?.subtle?.importKey === 'function'
+}
