@@ -31,7 +31,7 @@ jobs:
         run: |
           mkdir -p deploy
           cp -r .output deploy/.output
-          cp package.json package-lock.json deploy/
+          cp package.json package-lock.json ecosystem.config.cjs deploy/
 
       - name: Clean old .output on server
         uses: appleboy/ssh-action@v1.0.3
@@ -50,7 +50,7 @@ jobs:
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: ${{ secrets.SERVER_PORT }}
-          source: "deploy/.output,deploy/package.json,deploy/package-lock.json"
+          source: "deploy/.output,deploy/package.json,deploy/package-lock.json,deploy/ecosystem.config.cjs"
           target: ${{ secrets.DEPLOY_PATH }}
           strip_components: 1
           overwrite: true

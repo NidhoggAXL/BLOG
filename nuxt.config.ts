@@ -51,6 +51,11 @@ export default defineNuxtConfig({
     },
   },
 
+  /** Nginx 自签名 HTTPS 反代：信任 X-Forwarded-*，配合 PM2 中 NITRO_TRUST_PROXY=true */
+  nitro: {
+    compressPublicAssets: true,
+  },
+
   routeRules: {
     "/": { redirect: "/blog" },
     "/knowledge-graph": { ssr: false },
