@@ -45,6 +45,7 @@ export default defineNuxtConfig({
     ollamaEmbedModel: process.env.OLLAMA_EMBED_MODEL || "nomic-embed-text",
     aiEnabled: process.env.AI_ENABLED !== "false",
     aiMaxContextChunks: Number(process.env.AI_MAX_CONTEXT_CHUNKS || 4),
+    aiMinSimilarityScore: Number(process.env.AI_MIN_SIMILARITY_SCORE ?? 0.38),
     aiWikilinkMaxSuggestions: Number(process.env.AI_WIKILINK_MAX_SUGGESTIONS || 6),
     aiRequestTimeoutMs: Number(process.env.AI_REQUEST_TIMEOUT_MS || 120000),
     aiPublicRateLimitPerMin: Number(process.env.AI_PUBLIC_RATE_LIMIT_PER_MIN || 10),

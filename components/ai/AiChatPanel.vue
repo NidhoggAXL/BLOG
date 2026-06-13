@@ -97,6 +97,10 @@ function finalizeAssistantMessage(assistantId: string, opts?: { stopped?: boolea
     if (!target.content.trim()) {
       target.content = '（已停止生成）'
     }
+    const stoppedOnly = target.content.trim() === '（已停止生成）'
+    if (stoppedOnly || isRagFallbackOnlyAnswer(target.content)) {
+      target.sources = []
+    }
     return
   }
   if (!target.error && target.content) {

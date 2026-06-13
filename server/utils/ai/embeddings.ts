@@ -138,9 +138,15 @@ export async function searchSimilarChunks(
   pool: Pool,
   ai: AiRuntimeConfig,
   queryText: string,
-  opts?: { topK?: number; excludePostIds?: number[]; signal?: AbortSignal },
+  opts?: {
+    topK?: number
+    excludePostIds?: number[]
+    signal?: AbortSignal
+    minScore?: number
+  },
 ): Promise<RetrievedChunk[]> {
   const topK = opts?.topK ?? ai.maxContextChunks
+  const minScore = opts?.minScore ?? ai.minSimilarityScore
   const exclude = new Set(opts?.excludePostIds ?? [])
 
   if (opts?.signal?.aborted) {
@@ -165,9 +171,10 @@ export async function searchSimilarChunks(
   }
 
   scored.sort((a, b) => b.score - a.score)
+  const relevant = minScore > 0 ? scored.filter((item) => item.score >= minScore) : scored
 
   const byPost = new Map<number, RetrievedChunk>()
-  for (const item of scored) {
+  for (const item of relevant) {
     const prev = byPost.get(item.post_id)
     if (!prev || item.score > prev.score) {
       byPost.set(item.post_id, item)

@@ -3,6 +3,7 @@ import { isAiAbortedError } from './abort'
 import type { AiRuntimeConfig } from './config'
 import { searchSimilarChunks, type RetrievedChunk } from './embeddings'
 import { ollamaChatStream, type ChatMessage } from './ollama'
+import { chitChatReply, isChitChatQuery } from './rag-query'
 
 export type RagSource = { slug: string; title: string }
 
@@ -79,6 +80,12 @@ export async function* streamRagAnswer(
 
   if (signal?.aborted) return
 
+  if (isChitChatQuery(trimmed)) {
+    yield { type: 'sources', sources: [] }
+    yield { type: 'chunk', content: chitChatReply() }
+    return
+  }
+
   let chunks: RetrievedChunk[] = []
   let sources: RagSource[] = []
   try {
@@ -93,15 +100,16 @@ export async function* streamRagAnswer(
 
   if (signal?.aborted) return
 
-  yield { type: 'sources', sources }
-
   if (chunks.length === 0) {
+    yield { type: 'sources', sources: [] }
     yield {
       type: 'chunk',
       content: '知识库中暂无相关内容。请尝试换种问法，或确认已有已发布文章并完成索引重建。',
     }
     return
   }
+
+  yield { type: 'sources', sources }
 
   const messages = buildRagMessages(trimmed, chunks)
   try {
