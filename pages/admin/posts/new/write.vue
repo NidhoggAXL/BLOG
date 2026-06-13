@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ArrowLeft, DocumentChecked } from '@element-plus/icons-vue'
-import { postTitleAndSlug } from '~/utils/postSlug'
+import { buildManualPostPathSlug } from '~/utils/postPathSlug'
 
 const PostImmersiveMdEditor = defineAsyncComponent(
   () => import('~/components/posts/PostImmersiveMdEditor.vue'),
@@ -75,18 +75,20 @@ async function goToSavePage() {
   const importSlug = importMeta.value?.slug
   const title = importTitle || '未命名'
   const prev = peekCreateSave()
+  const dirId = prev?.directory_id ?? 0
+  const fallbackSlug = importSlug ?? buildManualPostPathSlug('', title).slug
   stashCreateSave({
     body: body.value,
     title: prev?.title ?? title,
-    slug: importSlug ?? prev?.slug ?? postTitleAndSlug(title).slug,
-    directory_id: prev?.directory_id ?? 0,
+    slug: importSlug ?? prev?.slug ?? fallbackSlug,
+    directory_id: dirId,
     status: prev?.status ?? 'draft',
     wikilink_slugs: prev?.wikilink_slugs ?? [],
   })
   stashImport({
     title,
     body: body.value,
-    slug: importSlug ?? postTitleAndSlug(title).slug,
+    slug: importSlug ?? fallbackSlug,
   })
   await router.push('/admin/posts/new/save')
 }

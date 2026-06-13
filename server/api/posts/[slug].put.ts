@@ -2,7 +2,7 @@ import type { PostDetail } from '../../../types/post'
 import { renderPostBodyHtmlForPool } from '../../utils/render-post-body-html'
 import { fetchPostBySlug, normalizeDirectoryId, normalizeStatus } from '../../utils/post-mutate'
 import { resolveAdminPostSlugFromEvent } from '../../utils/post-slug-param'
-import { postTitleAndSlug } from '../../../utils/postSlug'
+import { resolveManualPostSlug } from '../../utils/post-path-slug'
 import { queuePostEmbeddingsSync } from '../../utils/ai/embeddings'
 import { getExplicitOutboundSlugs, syncPostWikilinks } from '../../utils/wikilinks'
 
@@ -30,7 +30,6 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, message: '标题不能为空' })
   }
 
-  const { title, slug: newSlug } = postTitleAndSlug(rawTitle)
   const directoryId = normalizeDirectoryId(body.directory_id)
   const status = normalizeStatus(body.status)
   const rawMarkdown = typeof body.body === 'string' ? body.body : ''
@@ -52,15 +51,12 @@ export default defineEventHandler(async (event) => {
       }
     }
 
-    if (newSlug !== existing.slug) {
-      const [dup] = await conn.query('SELECT id FROM posts WHERE slug = ? AND id <> ? LIMIT 1', [
-        newSlug,
-        existing.id,
-      ])
-      if (Array.isArray(dup) && dup.length) {
-        throw createError({ statusCode: 409, message: 'slug 已被其他文章占用' })
-      }
-    }
+    const { title, slug: newSlug } = await resolveManualPostSlug(
+      conn,
+      directoryId,
+      rawTitle,
+      existing.id,
+    )
 
     await conn.beginTransaction()
 
@@ -122,7 +118,10 @@ export default defineEventHandler(async (event) => {
     const err = e as { statusCode?: number; statusMessage?: string; code?: string; errno?: number; sqlMessage?: string }
     if (err.statusCode) throw e
     if (err.code === 'ER_DUP_ENTRY' || err.errno === 1062) {
-      throw createError({ statusCode: 409, message: 'slug 已被占用，请修改路径或标题' })
+      throw createError({
+        statusCode: 409,
+        message: '该目录下已存在同名笔记或路径 slug 已被占用，请更换标题',
+      })
     }
     throw createError({
       statusCode: 500,

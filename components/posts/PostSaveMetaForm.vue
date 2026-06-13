@@ -1,22 +1,30 @@
 <script setup lang="ts">
 import type { DirectoryTreeNode } from '~/composables/buildDirectoryTreeSelect'
+import type { DirectoryRow } from '~/types/directory'
 import type { WikilinkLinkOption } from '~/composables/useWikilinkTextareaAutocomplete'
 import { collectResolvedWikilinkSlugs } from '~/utils/collectResolvedWikilinkSlugs'
-import { postTitleAndSlug } from '~/utils/postSlug'
+import {
+  buildManualPostPathSlug,
+  directoryPathSlugFromFlat,
+} from '~/utils/postPathSlug'
 import {
   enrichWikilinkParseRows,
   type WikilinkParseTableRow,
 } from '~/utils/wikilinkParseDisplay'
 
-const props = defineProps<{
-  treeSelectData: DirectoryTreeNode[]
-  linkOptions: WikilinkLinkOption[]
-  markdownBody?: string
-  initialTitle?: string
-  initialDirectoryId?: number
-  initialStatus?: 'draft' | 'published' | 'archived'
-  initialWikilinkSlugs?: string[]
-}>()
+const props = withDefaults(
+  defineProps<{
+    treeSelectData: DirectoryTreeNode[]
+    flatDirs?: DirectoryRow[]
+    linkOptions: WikilinkLinkOption[]
+    markdownBody?: string
+    initialTitle?: string
+    initialDirectoryId?: number
+    initialStatus?: 'draft' | 'published' | 'archived'
+    initialWikilinkSlugs?: string[]
+  }>(),
+  { flatDirs: () => [] },
+)
 
 const form = reactive({
   title: '',
@@ -30,7 +38,14 @@ const parsingWikilinks = ref(false)
 const wikilinkParseRows = ref<WikilinkParseTableRow[]>([])
 const parseSummary = ref<{ total: number; hit: number } | null>(null)
 
-const slugPreview = computed(() => postTitleAndSlug(form.title).slug)
+const directoryPathSlug = computed(() => {
+  const dirId = form.directory_id === 0 ? null : form.directory_id
+  return directoryPathSlugFromFlat(props.flatDirs, dirId)
+})
+
+const slugPreview = computed(
+  () => buildManualPostPathSlug(directoryPathSlug.value, form.title).slug,
+)
 
 function resetFromProps() {
   form.title = props.initialTitle ?? ''
@@ -112,7 +127,7 @@ function buildPayload():
     ElMessage.warning('请填写标题')
     return null
   }
-  const { title, slug } = postTitleAndSlug(form.title)
+  const { title, slug } = buildManualPostPathSlug(directoryPathSlug.value, form.title)
   return {
     title,
     slug,
@@ -132,12 +147,16 @@ defineExpose({ buildPayload, refreshWikilinkAutoParse, mergeWikilinkSlugs })
         v-model="form.title"
         maxlength="191"
         show-word-limit
-        placeholder="与文件名一致；title 与 slug 相同"
+        placeholder="与 Obsidian 文件名一致（即路径最后一段）"
       />
     </el-form-item>
 
     <p class="post-save-meta-form__slug-preview">
-      路径 slug：<code>{{ slugPreview || '（空）' }}</code>（与标题相同）
+      路径 slug：<code>{{ slugPreview || '（空）' }}</code>
+      <span v-if="directoryPathSlug" class="post-save-meta-form__slug-hint">
+        （{{ directoryPathSlug }}/标题）
+      </span>
+      <span v-else class="post-save-meta-form__slug-hint">（未归类：slug 即标题）</span>
     </p>
 
     <el-form-item label="所属目录" required>
@@ -232,6 +251,12 @@ defineExpose({ buildPayload, refreshWikilinkAutoParse, mergeWikilinkSlugs })
   padding: 2px 6px;
   border-radius: 4px;
   background: var(--admin-nav-hover);
+}
+
+.post-save-meta-form__slug-hint {
+  margin-left: 4px;
+  font-size: 12px;
+  opacity: 0.85;
 }
 
 .post-save-meta-form__wikilink-head {

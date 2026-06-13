@@ -52,4 +52,19 @@ assert.equal(
   '/admin/posts/aaaa%2Fbbb',
 )
 
+function buildManualPostPathSlug(directoryPathSlug, rawTitle) {
+  const s = rawTitle.trim().slice(0, 191) || '未命名'
+  const prefix = directoryPathSlug.trim().replace(/\/+$/, '')
+  const slug = (prefix ? `${prefix}/${s}` : s).slice(0, 191)
+  return { title: s, slug, stem: s }
+}
+
+assert.deepEqual(buildManualPostPathSlug('', 'bbb'), { title: 'bbb', slug: 'bbb', stem: 'bbb' })
+assert.deepEqual(buildManualPostPathSlug('aaaa', 'bbb'), { title: 'bbb', slug: 'aaaa/bbb', stem: 'bbb' })
+assert.deepEqual(buildManualPostPathSlug('ccc', 'bbb'), { title: 'bbb', slug: 'ccc/bbb', stem: 'bbb' })
+assert.notEqual(
+  buildManualPostPathSlug('aaaa', 'bbb').slug,
+  buildManualPostPathSlug('ccc', 'bbb').slug,
+)
+
 console.log('test-path-slug: ok')

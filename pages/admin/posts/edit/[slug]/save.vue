@@ -8,7 +8,7 @@ const router = useRouter()
 const slugParam = computed(() => String(route.params.slug ?? ''))
 
 const { consumeEditSave, clearEditSaveStash, stashEditSave } = usePostEditSaveStash()
-const { treeSelectData, linkOptions, loading: loadingMeta, loadMeta } = usePostCreateMeta()
+const { treeSelectData, flatDirs, linkOptions, loading: loadingMeta, loadMeta } = usePostCreateMeta()
 const postCache = usePostCacheStore()
 
 const stash = ref<ReturnType<typeof consumeEditSave>>(null)
@@ -159,6 +159,7 @@ useHead(() => ({ title: pageTitle.value }))
             <PostsPostSaveMetaForm
               ref="metaFormRef"
               :tree-select-data="treeSelectData"
+              :flat-dirs="flatDirs"
               :link-options="linkOptions"
               :markdown-body="bodyMarkdown"
               :initial-title="stash.title"
