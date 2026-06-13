@@ -6,7 +6,10 @@ import {
   formatPublicDisplayName,
   obsidianOrderFromSegment,
 } from "../../utils/obsidianDisplayPrefix";
-import { postTitleAndSlug } from "./slugify";
+import {
+  buildPathSlugFromArchivePath,
+  fileStemFromArchivePath,
+} from "../../utils/pathSlug";
 import {
   buildImportBatchWikilinkLookup,
   mergeWikilinkSlugsIntoBody,
@@ -119,16 +122,31 @@ function uniqueStringKey(
   return unique;
 }
 
-function uniqueImportPostMeta(
-  stem: string,
+function assignPathSlug(slug: string, usedSlugs: Set<string>): string {
+  const key = slug.toLowerCase();
+  if (usedSlugs.has(key)) {
+    throw new Error(
+      `路径 slug 已存在：「${slug}」。请调整压缩包路径、目录层级起点，或删除库中同名文章。`,
+    );
+  }
+  usedSlugs.add(key);
+  return slug;
+}
+
+function importPostMeta(
+  path: string,
+  depth: number,
   usedSlugs: Set<string>,
   usedTitles: Set<string>,
-): { title: string; slug: string } {
-  const slugBase = postTitleAndSlug(stem).slug;
+): { title: string; slug: string; stem: string } {
+  const stem = fileStemFromArchivePath(path);
+  const slug = assignPathSlug(
+    buildPathSlugFromArchivePath(path, depth),
+    usedSlugs,
+  );
   const titleBase = formatPublicDisplayName(stem, stem || "未命名");
-  const slug = uniqueStringKey(slugBase, usedSlugs);
   const title = uniqueStringKey(titleBase, usedTitles);
-  return { title, slug };
+  return { title, slug, stem };
 }
 
 async function findDirectoryUnderParent(
@@ -222,6 +240,7 @@ export async function runImportBatch(
     title: string;
     body: string;
     stem: string;
+    directory_id: number | null;
   }[] = [];
 
   for (const file of files) {
@@ -242,9 +261,12 @@ export async function runImportBatch(
       directoryId = ensured;
     }
 
-    const fileName = path.split("/").pop() ?? path;
-    const stem = fileName.replace(/\.(md|markdown|mdown|mkd)$/i, "").trim();
-    const { title, slug } = uniqueImportPostMeta(stem, usedSlugs, usedTitles);
+    const { title, slug, stem } = importPostMeta(
+      path,
+      depth,
+      usedSlugs,
+      usedTitles,
+    );
     const rawBody = stripMergedOutboundWikilinkBlock(
       typeof file.body === "string" ? file.body : "",
     );
@@ -265,7 +287,7 @@ export async function runImportBatch(
     );
 
     const postId = res.insertId;
-    imported.push({ id: postId, slug, title, body, stem });
+    imported.push({ id: postId, slug, title, body, stem, directory_id: directoryId });
     post_slugs.push(slug);
   }
 

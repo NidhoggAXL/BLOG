@@ -174,7 +174,7 @@ watch(
   height: 100%;
   display: flex;
   flex-direction: column;
-  padding: var(--card-padding);
+  padding: var(--card-padding) 0.65rem;
   overflow: hidden;
 }
 
@@ -307,14 +307,14 @@ watch(
 .file-tree-wrap {
   flex: 1;
   min-height: 0;
-  margin-bottom: 0.75rem;
+  margin: 0 -0.15rem 0.75rem;
   overflow-x: hidden;
   overflow-y: auto;
 }
 
 .dir-empty {
   margin: 0;
-  font-size: 0.9375rem;
+  font-size: 0.8125rem;
   color: var(--muted);
 }
 

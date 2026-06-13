@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { PublicPostDetail } from "~/types/blog";
 import { formatPublicDisplayName } from "~/utils/obsidianDisplayPrefix";
+import { formatDateTimeZh24 } from "~/utils/formatDateZh";
 
 const props = defineProps<{
   post: PublicPostDetail;
@@ -18,7 +19,7 @@ const { onMarkdownContentClick } = useSpaMarkdownLinkClick("/blog/");
     <header class="post-header">
       <h1 class="post-title">{{ displayTitle }}</h1>
       <div class="post-meta">
-        <time :datetime="post.date">{{ post.date }}</time>
+        <time :datetime="post.date">{{ formatDateTimeZh24(post.date) }}</time>
         <span v-if="post.tags.length" class="meta-divider">·</span>
         <ul v-if="post.tags.length" class="post-tags">
           <li v-for="tag in post.tags" :key="tag" class="tag">{{ tag }}</li>

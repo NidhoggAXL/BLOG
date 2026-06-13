@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import type { PublicPostMeta } from "~/types/blog";
 import { formatPublicDisplayName } from "~/utils/obsidianDisplayPrefix";
+import { formatDateTimeZh24 } from "~/utils/formatDateZh";
+import { publicBlogPostPath } from "~/utils/pathSlug";
 
 defineProps<{
   posts: PublicPostMeta[];
@@ -24,13 +26,13 @@ const emit = defineEmits<{
       <NuxtLink
         v-for="post in posts"
         :key="post.slug"
-        :to="`/blog/${post.slug}`"
+        :to="publicBlogPostPath(post.slug)"
         class="blog-item"
       >
         <h2 class="blog-item__title">
           {{ formatPublicDisplayName(post.title?.trim() || post.slug) }}
         </h2>
-        <p class="blog-item__meta">{{ post.date }}</p>
+        <p class="blog-item__meta">{{ formatDateTimeZh24(post.date) }}</p>
       </NuxtLink>
     </div>
     <p v-else class="blog-list__hint">暂无文章。</p>

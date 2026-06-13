@@ -51,7 +51,7 @@ export async function extractMarkdownFilesFromZip(
     const path = normalizeZipPath(name);
     const body = await ent.async("string");
     const fileName = path.split("/").pop() ?? path;
-    const payload = buildMdImportPayload(fileName, body);
+    const payload = buildMdImportPayload(fileName, body, { path });
     out.push({
       path,
       fileName,

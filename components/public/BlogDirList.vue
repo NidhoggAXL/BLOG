@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { TreeNode } from '~/types/blog'
+import { publicBlogPostPath } from '~/utils/pathSlug'
 
 defineProps<{
   nodes: TreeNode[]
@@ -54,7 +55,7 @@ const emit = defineEmits<{
       </li>
       <li v-else class="dir-item">
         <NuxtLink
-          :to="`/blog/${node.slug}`"
+          :to="publicBlogPostPath(node.slug)"
           class="dir-row file-row"
           :class="{ active: activeSlug === node.slug }"
         >
@@ -77,23 +78,23 @@ const emit = defineEmits<{
 }
 
 .dir-children {
-  padding-left: 0.45rem;
-  margin-left: 0.25rem;
+  padding-left: 0.35rem;
+  margin-left: 0.15rem;
   border-left: 1px solid var(--border);
 }
 
 .dir-row {
   display: flex;
   align-items: center;
-  gap: 0.4rem;
+  gap: 0.3rem;
   width: 100%;
-  padding: 0.55rem 0.6rem;
+  padding: 0.4rem 0.25rem;
   border: none;
   border-radius: 8px;
   background: transparent;
-  color: var(--text-secondary);
-  font-size: 0.9375rem;
-  line-height: 1.45;
+  color: var(--text);
+  font-size: 0.8125rem;
+  line-height: 1.4;
   text-align: left;
   cursor: pointer;
   transition: background 0.12s, color 0.12s;
@@ -118,31 +119,31 @@ const emit = defineEmits<{
 .folder-label {
   flex: 1;
   min-width: 0;
-  padding: 0.55rem 0.6rem 0.55rem 0;
+  padding: 0.4rem 0.25rem 0.4rem 0;
   border: none;
   background: transparent;
   color: var(--text);
   font-weight: 500;
-  font-size: 0.9375rem;
-  line-height: 1.45;
+  font-size: 0.8125rem;
+  line-height: 1.4;
   text-align: left;
   cursor: pointer;
 
   &:hover {
-    color: var(--accent);
+    color: var(--text);
   }
 }
 
 .tree-chevron-btn {
   flex-shrink: 0;
-  width: 1.35rem;
-  height: 1.35rem;
+  width: 1.2rem;
+  height: 1.2rem;
   padding: 0;
   border: none;
   border-radius: 4px;
   background: transparent;
   color: var(--muted);
-  font-size: 0.9rem;
+  font-size: 0.8rem;
   line-height: 1;
   cursor: pointer;
   transition: transform 0.15s, color 0.12s, background 0.12s;
@@ -158,7 +159,7 @@ const emit = defineEmits<{
 }
 
 .tree-chevron-spacer {
-  width: 1.35rem;
+  width: 1.2rem;
   flex-shrink: 0;
 }
 
@@ -170,9 +171,9 @@ const emit = defineEmits<{
 
 .dir-icon {
   flex-shrink: 0;
-  width: 1.15rem;
+  width: 1rem;
   text-align: center;
-  font-size: 0.95rem;
+  font-size: 0.85rem;
 }
 
 .file-row {

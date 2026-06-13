@@ -1,6 +1,7 @@
 /** 客户端/服务端共用的维基链接解析（不依赖 MySQL） */
 
 import { formatPublicDisplayName } from './obsidianDisplayPrefix'
+import { wikilinkHref } from './pathSlug'
 
 export function maskMarkdownForWikilinkScan(markdown: string): string {
   let s = markdown.replace(/```[\s\S]*?```/g, (block) =>
@@ -85,7 +86,7 @@ export function buildWikilinkEmbedBlock(
   basePath = "/admin/posts",
 ): string {
   const href =
-    `${basePath}/${encodeURIComponent(slug)}` +
+    wikilinkHref(basePath, slug) +
     (anchor ? `#${encodeURIComponent(anchor)}` : "");
   return (
     `<aside class="wikilink-embed" data-embed-slug="${escapeHtml(slug)}">` +
@@ -151,7 +152,7 @@ export function applyWikilinkMarkdownLinks(
       );
     } else if (embed && targetSlug) {
       const href =
-        `${basePath}/${encodeURIComponent(targetSlug)}` +
+        wikilinkHref(basePath, targetSlug) +
         (parsed.anchor ? `#${encodeURIComponent(parsed.anchor)}` : "");
       replacement = `<a class="wikilink wikilink--embed wikilink--loading" href="${href}">嵌入：${escapeHtml(display)}</a>`;
     } else if (embed) {
@@ -159,7 +160,7 @@ export function applyWikilinkMarkdownLinks(
       replacement = `<span class="${cls}">未找到嵌入：${escapeHtml(display)}</span>`;
     } else if (targetSlug) {
       const href =
-        `${basePath}/${encodeURIComponent(targetSlug)}` +
+        wikilinkHref(basePath, targetSlug) +
         (parsed.anchor ? `#${encodeURIComponent(parsed.anchor)}` : "");
       replacement = `[${display}](${href})`;
     } else {

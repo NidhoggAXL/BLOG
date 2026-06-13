@@ -2,6 +2,7 @@ import type { TreeNode } from "~/types/blog";
 import type { PublicDirectoryRow } from "~/types/blog";
 import type { PublicPostMeta } from "~/types/blog";
 import { formatPublicDisplayName } from "~/utils/obsidianDisplayPrefix";
+import { publicBlogPostPath } from "~/utils/pathSlug";
 
 type MutableFolderNode = {
   id: string;
@@ -204,27 +205,13 @@ export function useSiteMenu() {
 
   function goBack() {}
 
-  /** 一级目录下所有二级文件夹 id */
-  function collectSecondLevelFolderIds(rootNode: TreeNode): string[] {
-    if (rootNode.type !== "folder" || !rootNode.children?.length) return [];
-    return rootNode.children
-      .filter((child) => child.type === "folder")
-      .map((child) => child.id);
-  }
-
   /**
-   * 仅展开当前一级目录：其下二级目录展开，其余一级目录折叠；
-   * 若提供 slug，同时展开到该文章所在的深层路径。
+   * 展开指定一级目录（仅该层展开，不自动展开其下全部二级目录）；
+   * 若提供 slug，再展开到该文章所在的文件夹路径。
    */
   function syncExpandedForRootFolder(rootFolderId: string, slug?: string) {
-    const rootNode = findNodeById(fileTree.value, rootFolderId);
-    if (!rootNode || rootNode.type !== "folder") return;
-
     const next = new Set<string>();
     next.add(rootFolderId);
-    for (const id of collectSecondLevelFolderIds(rootNode)) {
-      next.add(id);
-    }
 
     if (slug) {
       const folderPath = findFolderPathToSlug(fileTree.value, slug) ?? [];
@@ -252,7 +239,7 @@ export function useSiteMenu() {
     const firstSlug = findFirstFileSlug(node);
     if (firstSlug) {
       syncExpandedForRootFolder(node.id, firstSlug);
-      await navigateTo(`/blog/${firstSlug}`);
+      await navigateTo(publicBlogPostPath(firstSlug));
       return;
     }
     syncExpandedForRootFolder(node.id);

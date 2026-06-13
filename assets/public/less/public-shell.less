@@ -141,8 +141,7 @@ html.theme-light .app-shell {
     .heading-toc__title,
     .blog-item__title,
     .toc-card__title,
-    .post-title,
-    .folder-label {
+    .post-title {
       color: #000;
       text-shadow: none;
     }
@@ -151,8 +150,11 @@ html.theme-light .app-shell {
     .blog-item__meta,
     .toc-link,
     .toc-empty,
+    .heading-toc__link,
     .dir-empty,
     .dir-row,
+    .dir-label,
+    .folder-label,
     .breadcrumb,
     .crumb-btn,
     .post-meta,
@@ -174,6 +176,18 @@ html.theme-light .app-shell {
 
     a:not(.social-link):not(.kg-planet-btn):not(.admin-entry-link) {
       text-shadow: none;
+    }
+
+    a.file-row:not(.active) {
+      color: #111;
+
+      &:hover {
+        color: var(--accent);
+      }
+    }
+
+    a.file-row.active {
+      color: var(--accent);
     }
 
     .card {
@@ -307,8 +321,7 @@ html.theme-dark .app-shell {
     .heading-toc__title,
     .blog-item__title,
     .toc-card__title,
-    .post-title,
-    .folder-label {
+    .post-title {
       color: #f5f7fa;
       text-shadow: none;
     }
@@ -317,8 +330,11 @@ html.theme-dark .app-shell {
     .blog-item__meta,
     .toc-link,
     .toc-empty,
+    .heading-toc__link,
     .dir-empty,
     .dir-row,
+    .dir-label,
+    .folder-label,
     .breadcrumb,
     .crumb-btn,
     .post-meta,
@@ -340,6 +356,18 @@ html.theme-dark .app-shell {
 
     a:not(.social-link):not(.kg-planet-btn):not(.admin-entry-link) {
       text-shadow: none;
+    }
+
+    a.file-row:not(.active) {
+      color: #e2e8ee;
+
+      &:hover {
+        color: var(--accent);
+      }
+    }
+
+    a.file-row.active {
+      color: var(--accent);
     }
 
     .card {

@@ -10,6 +10,7 @@ import {
   sanitizeRagAssistantAnswer,
 } from '~/utils/ragAnswerSanitize'
 import { formatPublicDisplayName } from '~/utils/obsidianDisplayPrefix'
+import { publicBlogPostPath } from '~/utils/pathSlug'
 
 export type { ChatMessageItem } from '~/types/ai'
 
@@ -336,7 +337,7 @@ watch(
           class="ai-chat-panel__sources"
         >
           <li v-for="src in msg.sources" :key="src.slug">
-            <NuxtLink :to="`/blog/${src.slug}`">{{
+            <NuxtLink :to="publicBlogPostPath(src.slug)">{{
               formatPublicDisplayName(src.title || src.slug)
             }}</NuxtLink>
           </li>

@@ -1,6 +1,7 @@
 import type { PostDetail } from '../../../types/post'
 import { renderPostBodyHtmlForPool } from '../../utils/render-post-body-html'
 import { fetchPostBySlug, normalizeDirectoryId, normalizeStatus } from '../../utils/post-mutate'
+import { resolveAdminPostSlugFromEvent } from '../../utils/post-slug-param'
 import { postTitleAndSlug } from '../../../utils/postSlug'
 import { queuePostEmbeddingsSync } from '../../utils/ai/embeddings'
 import { getExplicitOutboundSlugs, syncPostWikilinks } from '../../utils/wikilinks'
@@ -11,7 +12,7 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 503, message: '请在 .env 中配置 MYSQL_DATABASE' })
   }
 
-  const currentSlug = String(getRouterParam(event, 'slug') ?? '').trim()
+  const currentSlug = resolveAdminPostSlugFromEvent(event)
   if (!currentSlug) {
     throw createError({ statusCode: 400, message: '缺少 slug' })
   }

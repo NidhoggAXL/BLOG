@@ -22,6 +22,7 @@ import {
 } from '~/utils/importDirectoryConflict'
 import { fetchErrorMessage } from '~/utils/fetchErrorMessage'
 import { collectResolvedWikilinkSlugs } from '~/utils/collectResolvedWikilinkSlugs'
+import { buildPathSlugFromArchivePath } from '~/utils/pathSlug'
 import PostWikilinkParseTable from '~/components/posts/PostWikilinkParseTable.vue'
 import PostAiLinkRecommendPanel from '~/components/posts/PostAiLinkRecommendPanel.vue'
 
@@ -46,6 +47,15 @@ const {
 const parentMode = ref<'zip-as-root' | 'under-parent'>('zip-as-root')
 const parentDirectoryId = ref<number | undefined>(undefined)
 const archiveDepth = ref(0)
+
+/** 随「目录层级起点」重算路径型 slug 预览 */
+const importFiles = computed(() =>
+  props.files.map((f) => ({
+    ...f,
+    slug: buildPathSlugFromArchivePath(f.path, archiveDepth.value),
+  })),
+)
+
 const dirPreviewExpanded = ref(false)
 const wikilinkSlugs = ref<string[]>([])
 const status = ref<'draft' | 'published' | 'archived'>('draft')
@@ -63,7 +73,7 @@ const aiSelectedPath = ref('')
 const aiSlugsByPath = ref<Record<string, string[]>>({})
 
 const selectedAiFile = computed(() =>
-  props.files.find((f) => f.path === aiSelectedPath.value),
+  importFiles.value.find((f) => f.path === aiSelectedPath.value),
 )
 
 const aiAdoptedFileCount = computed(
@@ -71,7 +81,7 @@ const aiAdoptedFileCount = computed(
 )
 
 const aiFileSelectOptions = computed(() =>
-  props.files.map((f) => {
+  importFiles.value.map((f) => {
     const adopted = aiSlugsByPath.value[f.path]?.length ?? 0
     return {
       value: f.path,
@@ -81,7 +91,7 @@ const aiFileSelectOptions = computed(() =>
 )
 
 const aiExcludeSlugs = computed(() => {
-  const slugs = props.files.map((f) => f.slug).filter(Boolean)
+  const slugs = importFiles.value.map((f) => f.slug).filter(Boolean)
   const current = selectedAiFile.value?.slug
   if (!current) return slugs
   return slugs.filter((s) => s.toLowerCase() !== current.toLowerCase())
@@ -160,8 +170,16 @@ watch(
   { immediate: true },
 )
 
+watch(archiveDepth, () => {
+  wikilinkRows.value = []
+  wikilinkParseTried.value = false
+  if (autoParseWikilinks.value && importFiles.value.length && !metaLoading.value) {
+    void parseAllWikilinks({ silent: true })
+  }
+})
+
 watch(autoParseWikilinks, (on) => {
-  if (on && props.files.length && !metaLoading.value) {
+  if (on && importFiles.value.length && !metaLoading.value) {
     void parseAllWikilinks({ silent: true })
   } else if (!on) {
     wikilinkRows.value = []
@@ -220,18 +238,18 @@ async function parseAllWikilinks(options?: {
   mergeIntoSelection?: boolean
   silent?: boolean
 }) {
-  if (!props.files.length) return
+  if (!importFiles.value.length) return
   parsing.value = true
   wikilinkParseError.value = null
   if (!options?.silent) wikilinkRows.value = []
   try {
     const merged: WikilinkParseTableRow[] = []
-    const pending = props.files.map((z) => ({
+    const pending = importFiles.value.map((z) => ({
       slug: z.slug,
       title: z.title,
       stem: z.fileName.replace(/\.(md|markdown|mdown|mkd)$/i, '').trim(),
     }))
-    for (const f of props.files) {
+    for (const f of importFiles.value) {
       const res = await $fetch<{ links: WikilinkParseLink[] }>(
         '/api/wikilinks/parse',
         {
@@ -272,10 +290,10 @@ async function parseAllWikilinks(options?: {
 }
 
 async function submitBatch() {
-  if (!props.files.length) return
+  if (!importFiles.value.length) return
   if (batchOverLimit.value) {
     ElMessage.warning(
-      `当前 ${props.files.length} 个文件，超过单次上限 ${IMPORT_BATCH_MAX_FILES}，请拆分压缩包后分批导入`,
+      `当前 ${importFiles.value.length} 个文件，超过单次上限 ${IMPORT_BATCH_MAX_FILES}，请拆分压缩包后分批导入`,
     )
     return
   }
@@ -311,7 +329,7 @@ async function submitBatch() {
         status: status.value,
         wikilink_target_slugs: wikilinkSlugs.value,
         wikilink_slugs_by_path: wikilinkSlugsByPath,
-        files: props.files.map((f) => ({
+        files: importFiles.value.map((f) => ({
           path: f.path,
           title: f.title,
           body: f.body,

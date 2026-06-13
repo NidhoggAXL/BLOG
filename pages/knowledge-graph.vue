@@ -2,6 +2,7 @@
 import type { GraphData, GraphForceSettings, GraphNode, GraphSimNode } from "~/types/graph";
 import { DEFAULT_GRAPH_FORCES } from "~/types/graph";
 import { resolveGraphForceSettings } from "~/utils/obsidianGraphForces";
+import { publicBlogPostPath } from "~/utils/pathSlug";
 
 useHead({ title: "知识图谱星球" });
 
@@ -282,7 +283,7 @@ function onNodeClick(node: GraphSimNode) {
     void loadGraph();
     return;
   }
-  navigateTo(`/blog/${encodeURIComponent(node.slug)}`);
+  navigateTo(publicBlogPostPath(node.slug));
 }
 
 function closeSettings() {

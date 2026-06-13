@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { PublicPostDetail } from "~/types/blog";
+import { publicBlogPostPath } from "~/utils/pathSlug";
 
 defineProps<{
   post: PublicPostDetail | null;
@@ -50,7 +51,7 @@ defineProps<{
           <p v-if="similarSlugHint" class="post-not-found__hint">
             是否要访问：
             <NuxtLink
-              :to="`/blog/${similarSlugHint}`"
+              :to="publicBlogPostPath(similarSlugHint)"
               class="post-not-found__link"
             >
               {{ similarTitle }}

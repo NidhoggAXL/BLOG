@@ -4,6 +4,11 @@ import {
   maskMarkdownForWikilinkScan,
   parseWikilinkInner,
 } from "../../utils/wikilinkShared";
+import { pathSlugStem } from "../../utils/pathSlug";
+import {
+  directoryPathSlugById,
+  pathSlugUnderDirectoryPrefix,
+} from "./directory-path-slug";
 
 export {
   maskMarkdownForWikilinkScan,
@@ -66,6 +71,8 @@ export type WikilinkResolveOptions = {
   aliasesEnabled?: boolean;
   /** 批量导入等同批尚未提交时的待解析目标（slug → 文章） */
   batchLookup?: Map<string, ResolvedPost>;
+  /** 源文所在目录：解析 [[短名]] 时同目录优先 */
+  sourceDirectoryId?: number | null;
 };
 
 function dedupeResolvedPosts(posts: ResolvedPost[]): ResolvedPost[] {
@@ -79,9 +86,15 @@ function dedupeResolvedPosts(posts: ResolvedPost[]): ResolvedPost[] {
   return out;
 }
 
-/** 将本批导入文章的 slug / 文件名 stem 注册为可解析键 */
+/** 将本批导入文章的 slug / 路径 / 文件名 stem 注册为可解析键 */
 export function buildImportBatchWikilinkLookup(
-  rows: { id: number; slug: string; title: string; stem?: string }[],
+  rows: {
+    id: number;
+    slug: string;
+    title: string;
+    stem?: string;
+    directory_id?: number | null;
+  }[],
 ): Map<string, ResolvedPost> {
   const map = new Map<string, ResolvedPost>();
   for (const row of rows) {
@@ -91,6 +104,8 @@ export function buildImportBatchWikilinkLookup(
     if (row.stem) {
       for (const key of expandWikilinkSlugLookups(row.stem)) keys.add(key);
     }
+    const stem = pathSlugStem(row.slug);
+    if (stem && stem !== row.slug) keys.add(stem.toLowerCase());
     for (const key of keys) {
       if (!map.has(key)) map.set(key, post);
     }
@@ -98,7 +113,42 @@ export function buildImportBatchWikilinkLookup(
   return map;
 }
 
-/** slug 精确 → post_aliases.alias 精确；可选 batchLookup 覆盖同批导入 */
+async function queryPostsByExactSlug(
+  executor: { query: PoolConnection["query"] },
+  lookup: string,
+  limit: number,
+): Promise<ResolvedPost[]> {
+  const [rows] = await executor.query(
+    "SELECT id, slug, title FROM posts WHERE LOWER(slug) = ? ORDER BY id ASC LIMIT ?",
+    [lookup, limit],
+  );
+  return (rows as ResolvedPost[]) ?? [];
+}
+
+async function queryPostsByStemSuffix(
+  executor: { query: PoolConnection["query"] },
+  stem: string,
+  limit: number,
+): Promise<(ResolvedPost & { directory_id: number | null })[]> {
+  const [rows] = await executor.query(
+    `SELECT id, slug, title, directory_id FROM posts
+     WHERE LOWER(slug) = ? OR LOWER(slug) LIKE ?
+     ORDER BY id ASC LIMIT ?`,
+    [stem, `%/${stem}`, limit],
+  );
+  return (rows as (ResolvedPost & { directory_id: number | null })[]) ?? [];
+}
+
+function preferSameDirectoryCandidates<T extends { directory_id: number | null }>(
+  candidates: T[],
+  sourceDirectoryId: number | null | undefined,
+): T[] {
+  if (sourceDirectoryId == null) return candidates;
+  const same = candidates.filter((c) => c.directory_id === sourceDirectoryId);
+  return same.length ? same : candidates;
+}
+
+/** slug 精确 → 同目录路径 → 后缀匹配；可选 batchLookup */
 export async function resolveWikilinkLookup(
   executor: { query: PoolConnection["query"] },
   slugLookup: string,
@@ -108,6 +158,7 @@ export async function resolveWikilinkLookup(
   if (!lookups.length) return { status: "missing_target" };
 
   const limit = options?.maxCandidates ?? 3;
+  const hasPath = slugLookup.includes("/");
 
   if (options?.batchLookup) {
     const batchHits = dedupeResolvedPosts(
@@ -121,15 +172,62 @@ export async function resolveWikilinkLookup(
 
   let candidates: ResolvedPost[] = [];
   for (const lookup of lookups) {
-    const [bySlug] = await executor.query(
-      "SELECT id, slug, title FROM posts WHERE LOWER(slug) = ? ORDER BY id ASC LIMIT ?",
-      [lookup, limit],
-    );
     candidates = dedupeResolvedPosts([
       ...candidates,
-      ...((bySlug as ResolvedPost[]) ?? []),
+      ...(await queryPostsByExactSlug(executor, lookup, limit)),
     ]);
-    if (candidates.length) break;
+    if (candidates.length === 1) break;
+    if (candidates.length > 1) {
+      return { status: "ambiguous", posts: candidates };
+    }
+  }
+
+  if (
+    !candidates.length &&
+    !hasPath &&
+    options?.sourceDirectoryId != null
+  ) {
+    const dirPrefix = await directoryPathSlugById(
+      executor,
+      options.sourceDirectoryId,
+    );
+    if (dirPrefix) {
+      for (const lookup of lookups) {
+        const pathSlug = `${dirPrefix}/${lookup}`;
+        const hit = await queryPostsByExactSlug(executor, pathSlug, 1);
+        if (hit.length === 1) return { status: "ok", post: hit[0]! };
+        if (hit.length > 1) return { status: "ambiguous", posts: hit };
+      }
+    }
+  }
+
+  if (!candidates.length && !hasPath) {
+    for (const lookup of lookups) {
+      const suffixHits = await queryPostsByStemSuffix(executor, lookup, limit * 2);
+      if (!suffixHits.length) continue;
+
+      let pool = suffixHits;
+      if (options?.sourceDirectoryId != null) {
+        const dirPrefix = await directoryPathSlugById(
+          executor,
+          options.sourceDirectoryId,
+        );
+        const inTree = suffixHits.filter(
+          (p) =>
+            p.directory_id === options.sourceDirectoryId ||
+            (dirPrefix && pathSlugUnderDirectoryPrefix(p.slug, dirPrefix)),
+        );
+        pool = preferSameDirectoryCandidates(inTree, options.sourceDirectoryId);
+      }
+
+      const deduped = dedupeResolvedPosts(pool);
+      if (deduped.length === 1) {
+        return { status: "ok", post: deduped[0]! };
+      }
+      if (deduped.length > 1) {
+        return { status: "ambiguous", posts: deduped };
+      }
+    }
   }
 
   if (
@@ -171,13 +269,14 @@ export type WikilinkResolvedPreview = ParsedWikilink & {
 export async function resolveParsedWikilinksForPreview(
   executor: { query: PoolConnection["query"] },
   parsed: ParsedWikilink[],
-  options?: Pick<WikilinkResolveOptions, "batchLookup">,
+  options?: Pick<WikilinkResolveOptions, "batchLookup" | "sourceDirectoryId">,
 ): Promise<WikilinkResolvedPreview[]> {
   const out: WikilinkResolvedPreview[] = [];
   for (const row of parsed) {
     const resolved = await resolveWikilinkLookup(executor, row.slug_lookup, {
       maxCandidates: 3,
       batchLookup: options?.batchLookup,
+      sourceDirectoryId: options?.sourceDirectoryId,
     });
     if (resolved.status === "missing_target") {
       out.push({ ...row, resolve_status: "missing_target" });
@@ -267,10 +366,18 @@ export async function syncPostWikilinks(
     return { inserted: 0, skipped: false };
   }
 
+  const [srcRows] = await conn.query(
+    "SELECT directory_id FROM posts WHERE id = ? LIMIT 1",
+    [sourcePostId],
+  );
+  const sourceDirectoryId =
+    (srcRows as { directory_id: number | null }[])[0]?.directory_id ?? null;
+
   for (const row of parsed) {
     const resolved = await resolveWikilinkLookup(conn, row.slug_lookup, {
       maxCandidates: 2,
       batchLookup: options?.batchLookup,
+      sourceDirectoryId,
     });
     let targetId: number | null = null;
     let resolve_status: "ok" | "missing_target" | "ambiguous" | "self_loop" =

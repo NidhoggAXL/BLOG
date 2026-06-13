@@ -1,5 +1,6 @@
 import type { PostDeleteResult } from '../../../types/post'
 import { fetchPostBySlug } from '../../utils/post-mutate'
+import { resolveAdminPostSlugFromEvent } from '../../utils/post-slug-param'
 import { countWikilinkEdges, getInboundWikilinks, markInboundWikilinksMissing } from '../../utils/wikilinks'
 
 export default defineEventHandler(async (event) => {
@@ -8,7 +9,7 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 503, message: '请在 .env 中配置 MYSQL_DATABASE' })
   }
 
-  const slug = String(getRouterParam(event, 'slug') ?? '').trim()
+  const slug = resolveAdminPostSlugFromEvent(event)
   if (!slug) {
     throw createError({ statusCode: 400, message: '缺少 slug' })
   }

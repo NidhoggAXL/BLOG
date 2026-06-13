@@ -1,8 +1,9 @@
 import { getPostDetail, requireMysqlFromEvent } from '../../utils/posts'
+import { resolveAdminPostSlugFromEvent } from '../../utils/post-slug-param'
 
 export default defineEventHandler(async (event) => {
   const { config, pool } = requireMysqlFromEvent(event)
-  const slug = String(getRouterParam(event, 'slug') ?? '').trim()
+  const slug = resolveAdminPostSlugFromEvent(event)
   if (!slug) {
     throw createError({ statusCode: 400, message: '缺少 slug' })
   }
