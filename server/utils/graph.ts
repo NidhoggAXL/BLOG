@@ -1,4 +1,5 @@
 import type { GraphData, GraphEdge, GraphNode } from "../../types/graph";
+import { SQL_ORDER_BY_SORT_ORDER_ASC } from "../../utils/sortOrder";
 
 type PostRow = {
   id: number;
@@ -35,7 +36,7 @@ export async function buildGraphData(
 
   const postWhere = publishedOnly ? " WHERE status = 'published'" : "";
   const [postRows] = await pool.query(
-    `SELECT id, slug, title, directory_id, created_at FROM posts${postWhere} ORDER BY title ASC`,
+    `SELECT id, slug, title, directory_id, sort_order, created_at FROM posts${postWhere} ORDER BY ${SQL_ORDER_BY_SORT_ORDER_ASC}, title ASC`,
   );
   const posts = postRows as PostRow[];
   const [directoryRows] = await pool.query(

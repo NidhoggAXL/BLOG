@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { HomeFilled } from "@element-plus/icons-vue";
+
 withDefaults(
   defineProps<{
     /** 首页落地页：签名完整换行显示 */
@@ -35,6 +37,15 @@ const displayEmail = computed(() => {
     aria-label="站点信息"
   >
     <div class="profile-bar__identity">
+      <NuxtLink
+        v-if="isKgActive"
+        to="/blog"
+        class="profile-bar__home-btn"
+        title="返回首页"
+        aria-label="返回首页"
+      >
+        <el-icon><HomeFilled /></el-icon>
+      </NuxtLink>
       <img
         :src="profile.avatar"
         :alt="profile.name"
@@ -133,6 +144,34 @@ const displayEmail = computed(() => {
   gap: 0.75rem;
   justify-self: start;
   min-width: 0;
+}
+
+.profile-bar__home-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-elevated);
+  color: var(--muted);
+  text-decoration: none;
+  transition:
+    background 0.15s,
+    color 0.15s,
+    border-color 0.15s;
+
+  :deep(.el-icon) {
+    font-size: 16px;
+  }
+
+  &:hover {
+    background: var(--bg-hover);
+    color: var(--accent);
+    border-color: color-mix(in srgb, var(--accent) 40%, var(--border));
+  }
 }
 
 .profile-bar__avatar {

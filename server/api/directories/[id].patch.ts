@@ -5,6 +5,7 @@ import {
   assertDirectorySiblingSlugAvailable,
 } from '../../utils/directory-sibling-uniqueness'
 import { directoryNameAndSlug } from '../../../utils/directorySlug'
+import { normalizeManualSortOrder } from '../../../utils/sortOrder'
 import { getDescendantIdsIncludingSelf } from '../../utils/directory-ancestors'
 import type { DirectoryRow } from '../../../types/directory'
 
@@ -52,8 +53,8 @@ export default defineEventHandler(async (event) => {
   const { name, slug } = directoryNameAndSlug(rawName)
 
   const sortOrder =
-    body.sort_order !== undefined && Number.isFinite(Number(body.sort_order))
-      ? Number(body.sort_order)
+    body.sort_order !== undefined
+      ? normalizeManualSortOrder(body.sort_order)
       : cur.sort_order
 
   const nextParent = 'parent_id' in body ? normalizeParentId(body.parent_id) : cur.parent_id

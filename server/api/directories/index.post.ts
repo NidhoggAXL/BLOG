@@ -5,6 +5,22 @@ import {
   assertDirectorySiblingSlugAvailable,
 } from '../../utils/directory-sibling-uniqueness'
 import { directoryNameAndSlug } from '../../../utils/directorySlug'
+import { obsidianOrderFromSegment } from '../../../utils/obsidianDisplayPrefix'
+import { normalizeManualSortOrder } from '../../../utils/sortOrder'
+
+function resolveDirectorySortOrder(
+  raw: unknown | undefined,
+  name: string,
+  fallback?: number | null,
+): number | null {
+  if (raw !== undefined) {
+    const manual = normalizeManualSortOrder(raw)
+    if (raw != null && manual != null) return manual
+    return obsidianOrderFromSegment(name)
+  }
+  if (fallback !== undefined) return fallback
+  return obsidianOrderFromSegment(name)
+}
 
 function normalizeParentId(raw: unknown): number | null {
   if (raw === undefined || raw === null || raw === '') return null
@@ -37,7 +53,7 @@ export default defineEventHandler(async (event) => {
   const parentId = normalizeParentId(body.parent_id)
 
   const { name, slug } = directoryNameAndSlug(rawName)
-  const sortOrder = Number.isFinite(Number(body.sort_order)) ? Number(body.sort_order) : 0
+  const sortOrder = resolveDirectorySortOrder(body.sort_order, name)
 
   const pool = useMysqlPool()
 

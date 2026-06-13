@@ -21,7 +21,7 @@ export async function fetchPostBySlug(
   slug: string,
 ): Promise<PostDetail | null> {
   const [rows] = await conn.query(
-    'SELECT id, directory_id, slug, title, body, status, published_at, created_at, updated_at FROM posts WHERE slug = ? LIMIT 1',
+    'SELECT id, directory_id, sort_order, slug, title, body, status, published_at, created_at, updated_at FROM posts WHERE slug = ? LIMIT 1',
     [slug],
   )
   return (rows as PostDetail[])[0] ?? null

@@ -67,4 +67,27 @@ assert.notEqual(
   buildManualPostPathSlug('ccc', 'bbb').slug,
 )
 
+function postSortOrderFromStem(stem) {
+  const m = stem.trim().match(/^(\d+)/)
+  if (!m?.[1]) return null
+  const n = Number.parseInt(m[1], 10)
+  return Number.isFinite(n) ? n : null
+}
+
+function compareObsidianSortOrder(a, b) {
+  const aMissing = a == null
+  const bMissing = b == null
+  if (aMissing && bMissing) return 0
+  if (aMissing) return 1
+  if (bMissing) return -1
+  return a - b
+}
+
+assert.equal(postSortOrderFromStem('01_简介'), 1)
+assert.equal(postSortOrderFromStem('02_进阶'), 2)
+assert.equal(postSortOrderFromStem('简介'), null)
+assert.equal(compareObsidianSortOrder(1, 2), -1)
+assert.equal(compareObsidianSortOrder(null, 2), 1)
+assert.equal(compareObsidianSortOrder(1, null), -1)
+
 console.log('test-path-slug: ok')

@@ -3,11 +3,12 @@ import type { PublicDirectoryRow } from "~/types/blog";
 import type { PublicPostMeta } from "~/types/blog";
 import { formatPublicDisplayName } from "~/utils/obsidianDisplayPrefix";
 import { publicBlogPostPath } from "~/utils/pathSlug";
+import { compareObsidianSortOrder } from "~/utils/sortOrder";
 
 type MutableFolderNode = {
   id: string;
   name: string;
-  sort_order: number;
+  sort_order: number | null;
   sort_time: number;
   type: "folder";
   children: TreeNode[];
@@ -66,6 +67,7 @@ function buildFileTreeByDirectories(
       id: `file:${post.slug}`,
       name: treeNodeLabel(post.title || fileNameWithoutExt(post.slug)),
       type: "file",
+      sort_order: post.sort_order ?? null,
       sort_time: fileTime,
       slug: post.slug,
     };
@@ -92,13 +94,14 @@ function buildFileTreeByDirectories(
     nodes.sort((a, b) => {
       if (a.type !== b.type) return a.type === "folder" ? -1 : 1;
       if (a.type === "folder" && b.type === "folder") {
-        const aSort = a.sort_order ?? 0;
-        const bSort = b.sort_order ?? 0;
-        if (aSort !== bSort) return aSort - bSort;
+        const order = compareObsidianSortOrder(a.sort_order, b.sort_order);
+        if (order !== 0) return order;
         const aTime = a.sort_time ?? 0;
         const bTime = b.sort_time ?? 0;
         if (aTime !== bTime) return aTime - bTime;
       } else {
+        const order = compareObsidianSortOrder(a.sort_order, b.sort_order);
+        if (order !== 0) return order;
         const aTime = a.sort_time ?? 0;
         const bTime = b.sort_time ?? 0;
         if (aTime !== bTime) return aTime - bTime;

@@ -1,11 +1,13 @@
 import type { PublicPostDetail, PublicPostMeta } from "../../types/blog";
 import type { PostDetail, PostListItem } from "../../types/post";
+import { SQL_ORDER_BY_SORT_ORDER_ASC } from "../../utils/sortOrder";
 import { renderPostBodyHtmlForPool } from "./render-post-body-html";
 import { getExplicitOutboundSlugs, getPostWikilinkRefs } from "./wikilinks";
 
 type PostListRow = {
   id: number;
   directory_id: number | null;
+  sort_order: number | null;
   slug: string;
   title: string;
   body: string;
@@ -43,9 +45,9 @@ export async function listPosts(
   const publishedOnly = opts?.publishedOnly === true;
   const where = publishedOnly ? " WHERE status = 'published'" : "";
   const [rows] = await pool.query(
-    `SELECT id, directory_id, slug, title, status, created_at, updated_at
+    `SELECT id, directory_id, sort_order, slug, title, status, created_at, updated_at
      FROM posts${where}
-     ORDER BY COALESCE(directory_id, 0), title ASC`,
+     ORDER BY COALESCE(directory_id, 0), ${SQL_ORDER_BY_SORT_ORDER_ASC}, title ASC`,
   );
   return rows as PostListItem[];
 }
@@ -54,10 +56,10 @@ export async function listPublicPosts(
   pool: ReturnType<typeof useMysqlPool>,
 ): Promise<PublicPostMeta[]> {
   const [rows] = await pool.query(
-    `SELECT directory_id, slug, title, published_at, updated_at, created_at
+    `SELECT directory_id, sort_order, slug, title, published_at, updated_at, created_at
      FROM posts
      WHERE status = 'published'
-     ORDER BY COALESCE(published_at, updated_at, created_at) DESC`,
+     ORDER BY COALESCE(directory_id, 0), ${SQL_ORDER_BY_SORT_ORDER_ASC}, COALESCE(published_at, updated_at, created_at) DESC`,
   );
 
   return (rows as Omit<PostListRow, "body" | "status" | "id">[]).map((row) => {
@@ -66,6 +68,7 @@ export async function listPublicPosts(
       slug: row.slug,
       title: row.title,
       directory_id: row.directory_id,
+      sort_order: row.sort_order ?? null,
       date,
       tags: [],
     } satisfies PublicPostMeta;
@@ -88,7 +91,7 @@ export async function getPostDetail(
     ? " WHERE slug = ? AND status = 'published'"
     : " WHERE slug = ?";
   const [rows] = await pool.query(
-    `SELECT id, directory_id, slug, title, body, status, published_at, created_at, updated_at
+    `SELECT id, directory_id, sort_order, slug, title, body, status, published_at, created_at, updated_at
      FROM posts${where}
      LIMIT 1`,
     [slug],

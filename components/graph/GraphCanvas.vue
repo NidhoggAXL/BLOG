@@ -23,9 +23,11 @@ import {
 import {
   anchorRevealNodes,
   buildGraphRevealOrder,
+  easeRevealProgress,
   filterEdgesForVisibleNodes,
   getGraphRevealPacing,
   GRAPH_REVEAL_TIMING,
+  newlyVisibleLinkPulls,
 } from "~/utils/graphReveal";
 import {
   type GraphDragSession,
@@ -96,6 +98,96 @@ let visibleNodeIds: Set<number> | null = null;
 let animationTimer: ReturnType<typeof setTimeout> | null = null;
 /** 播放开始前快照，供后续步骤恢复已显现过的节点坐标 */
 let revealLayoutCache: Map<number, GraphNodePose> | null = null;
+/** 正在「拉动」显现的双链：从 anchor 拉向 extend */
+type LinkPullState = { startedAt: number; anchorId: number; extendId: number };
+let linkPullStarts = new Map<string, LinkPullState>();
+/** 本步 sync 时应启动拉动动画的边 */
+let pendingLinkPulls: Map<string, { anchorId: number; extendId: number }> | null =
+  null;
+
+function clearLinkPullState() {
+  linkPullStarts.clear();
+}
+
+function startLinkPull(key: string, anchorId: number, extendId: number) {
+  linkPullStarts.set(key, {
+    startedAt: performance.now(),
+    anchorId,
+    extendId,
+  });
+}
+
+function getLinkPullProgress(key: string): (LinkPullState & { progress: number }) | null {
+  const state = linkPullStarts.get(key);
+  if (state == null) return null;
+  const t = (performance.now() - state.startedAt) / GRAPH_REVEAL_TIMING.linkPullMs;
+  if (t >= 1) return null;
+  return { ...state, progress: easeRevealProgress(t) };
+}
+
+function cleanupFinishedLinkPulls() {
+  const now = performance.now();
+  for (const [key, state] of linkPullStarts) {
+    if ((now - state.startedAt) / GRAPH_REVEAL_TIMING.linkPullMs >= 1) {
+      linkPullStarts.delete(key);
+    }
+  }
+}
+
+function waitForLinkPullsThenFinish(width: number, height: number) {
+  cleanupFinishedLinkPulls();
+  if (linkPullStarts.size === 0) {
+    finishAnimationPlayback(width, height);
+    return;
+  }
+  animationTimer = setTimeout(
+    () => waitForLinkPullsThenFinish(width, height),
+    32,
+  );
+}
+
+function resolveLinkLineCoords(
+  d: GraphSimLink,
+  hasArrow: boolean,
+  strokeW: number,
+  pull: (LinkPullState & { progress: number }) | null,
+) {
+  if (pull != null) {
+    const anchor = nodeById.get(pull.anchorId);
+    const extend = nodeById.get(pull.extendId);
+    const ax = anchor?.x ?? 0;
+    const ay = anchor?.y ?? 0;
+    const ex = extend?.x ?? ax;
+    const ey = extend?.y ?? ay;
+    const p = pull.progress;
+    return {
+      x1: ax,
+      y1: ay,
+      x2: ax + (ex - ax) * p,
+      y2: ay + (ey - ay) * p,
+    };
+  }
+
+  const source = d.source as GraphSimNode;
+  const target = d.target as GraphSimNode;
+  const sx = source.x ?? 0;
+  const sy = source.y ?? 0;
+  let tx = target.x ?? 0;
+  let ty = target.y ?? 0;
+
+  if (!hasArrow) return { x1: sx, y1: sy, x2: tx, y2: ty };
+
+  const dx = tx - sx;
+  const dy = ty - sy;
+  const len = Math.hypot(dx, dy) || 1;
+  const offset = Math.max(target.r + strokeW * 1.3 + 3, 8);
+  return {
+    x1: sx,
+    y1: sy,
+    x2: tx - (dx / len) * offset,
+    y2: ty - (dy / len) * offset,
+  };
+}
 
 const graphLayout = useGraphLayoutStore();
 
@@ -189,6 +281,7 @@ function stopAnimationPlayback() {
   animating = false;
   visibleNodeIds = null;
   revealLayoutCache = null;
+  clearLinkPullState();
   if (animationTimer) {
     clearTimeout(animationTimer);
     animationTimer = null;
@@ -201,6 +294,7 @@ function finishAnimationPlayback(width: number, height: number) {
   animating = false;
   visibleNodeIds = null;
   revealLayoutCache = null;
+  clearLinkPullState();
   if (animationTimer) {
     clearTimeout(animationTimer);
     animationTimer = null;
@@ -290,38 +384,39 @@ function renderFrame() {
   const hasArrow = !!props.forces.showArrow;
 
   g.selectAll<SVGLineElement, GraphSimLink>("line.graph-link")
-    .attr("x1", (d) => (d.source as GraphSimNode).x ?? 0)
-    .attr("y1", (d) => (d.source as GraphSimNode).y ?? 0)
+    .attr("x1", (d) => {
+      const key = linkKey(d);
+      const pull = animating ? getLinkPullProgress(key) : null;
+      return resolveLinkLineCoords(d, hasArrow, strokeW, pull).x1;
+    })
+    .attr("y1", (d) => {
+      const key = linkKey(d);
+      const pull = animating ? getLinkPullProgress(key) : null;
+      return resolveLinkLineCoords(d, hasArrow, strokeW, pull).y1;
+    })
     .attr("x2", (d) => {
-      const source = d.source as GraphSimNode;
-      const target = d.target as GraphSimNode;
-      const sx = source.x ?? 0;
-      const sy = source.y ?? 0;
-      const tx = target.x ?? 0;
-      const ty = target.y ?? 0;
-      if (!hasArrow) return tx;
-      const dx = tx - sx;
-      const dy = ty - sy;
-      const len = Math.hypot(dx, dy) || 1;
-      const offset = Math.max(target.r + strokeW * 1.3 + 3, 8);
-      return tx - (dx / len) * offset;
+      const key = linkKey(d);
+      const pull = animating ? getLinkPullProgress(key) : null;
+      return resolveLinkLineCoords(d, hasArrow, strokeW, pull).x2;
     })
     .attr("y2", (d) => {
-      const source = d.source as GraphSimNode;
-      const target = d.target as GraphSimNode;
-      const sx = source.x ?? 0;
-      const sy = source.y ?? 0;
-      const tx = target.x ?? 0;
-      const ty = target.y ?? 0;
-      if (!hasArrow) return ty;
-      const dx = tx - sx;
-      const dy = ty - sy;
-      const len = Math.hypot(dx, dy) || 1;
-      const offset = Math.max(target.r + strokeW * 1.3 + 3, 8);
-      return ty - (dy / len) * offset;
+      const key = linkKey(d);
+      const pull = animating ? getLinkPullProgress(key) : null;
+      return resolveLinkLineCoords(d, hasArrow, strokeW, pull).y2;
+    })
+    .attr("opacity", (d) => {
+      if (!animating) return null;
+      const pull = getLinkPullProgress(linkKey(d));
+      if (pull == null) return null;
+      return 0.35 + pull.progress * 0.65;
     })
     .attr("stroke-width", strokeW)
-    .attr("marker-end", props.forces.showArrow ? "url(#graph-arrow)" : null)
+    .attr("marker-end", (d) => {
+      if (!props.forces.showArrow) return null;
+      const key = linkKey(d);
+      if (animating && getLinkPullProgress(key) != null) return null;
+      return "url(#graph-arrow)";
+    })
     .attr("class", (d) => {
       if (!focus) return "graph-link";
       const s = (d.source as GraphSimNode).id;
@@ -351,6 +446,8 @@ function renderFrame() {
         ? "graph-label graph-label--hi"
         : "graph-label graph-label--dim";
     });
+
+  if (animating) cleanupFinishedLinkPulls();
 }
 
 function tickLoop() {
@@ -772,18 +869,19 @@ function syncGraphData(width: number, height: number, reheatOverride?: number) {
     .selectAll<SVGLineElement, GraphSimLink>("line")
     .data(links, linkKey)
     .join(
-      (enter) => {
-        const line = enter.append("line").attr("class", "graph-link");
-        if (fadeEnter) {
-          line
-            .attr("opacity", 0)
-            .transition()
-            .duration(GRAPH_REVEAL_TIMING.fadeMs)
-            .ease(easeCubicOut)
-            .attr("opacity", 1);
-        }
-        return line;
-      },
+      (enter) =>
+        enter
+          .append("line")
+          .attr("class", "graph-link")
+          .each(function (d) {
+            if (!fadeEnter) return;
+            const k = linkKey(d);
+            const spec = pendingLinkPulls?.get(k);
+            if (spec) {
+              startLinkPull(k, spec.anchorId, spec.extendId);
+              select(this).attr("opacity", 0.35);
+            }
+          }),
       (update) => update.attr("opacity", null),
       (exit) => exit.remove(),
     );
@@ -857,16 +955,23 @@ function playAnimation() {
     const step = () => {
       if (!animating || !simulation) return;
 
+      const visibleBefore = new Set(visibleNodeIds!);
       const batchEnd = Math.min(order.length, index + stepSize);
-      for (let i = index; i < batchEnd; i++) visibleNodeIds!.add(order[i]);
+      for (let i = index; i < batchEnd; i++) visibleNodeIds!.add(order[i]!);
       index = batchEnd;
 
+      pendingLinkPulls = new Map(
+        newlyVisibleLinkPulls(raw.edges, visibleBefore, visibleNodeIds!).map(
+          (spec) => [spec.key, { anchorId: spec.anchorId, extendId: spec.extendId }],
+        ),
+      );
       syncGraphData(width, height, GRAPH_REVEAL_TIMING.stepReheat);
+      pendingLinkPulls = null;
 
       if (index < order.length) {
         animationTimer = setTimeout(step, stepMs);
       } else {
-        finishAnimationPlayback(width, height);
+        waitForLinkPullsThenFinish(width, height);
       }
     };
 

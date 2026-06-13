@@ -10,21 +10,25 @@ import {
   View,
 } from "@element-plus/icons-vue";
 import DirectoryManageDialog from "~/components/DirectoryManageDialog.vue";
-import LibraryDirectoryNav from "~/components/library/LibraryDirectoryNav.vue";
+import DirectoriesAdminNav from "~/components/directories/DirectoriesAdminNav.vue";
 import { buildDirectoryRowTree } from "~/composables/buildDirectoryTreeSelect";
 import type { DirectoryRow } from "~/types/directory";
 import type { PostListItem } from "~/types/post";
 import { confirmDestructive } from "~/utils/confirmDialog";
 import {
-  buildLibraryNavTree,
+  ALL_DIRECTORIES_NAV_ID,
+  buildDirectoriesAdminNavTree,
+  filterDirectoriesAdminNavTree,
+  findDirectoriesAdminNavNode,
+  isRealDirectoryNavId,
+} from "~/utils/directoriesAdminNav";
+import {
   countPostsInSubtree,
   expandLibraryAncestors,
-  filterLibraryNavTree,
-  findLibraryNavNode,
-  firstLibraryNavNode,
   getChildDirectories,
   type LibraryNavNode,
 } from "~/utils/libraryDirectory";
+import { compareObsidianSortOrder } from "~/utils/sortOrder";
 
 const props = defineProps<{
   directories: DirectoryRow[];
@@ -42,10 +46,11 @@ const emit = defineEmits<{
 }>();
 
 const postCache = usePostCacheStore();
-const selectedDirectoryId = ref<number | null>(null);
+const selectedDirectoryId = ref<number>(ALL_DIRECTORIES_NAV_ID);
 const manageOpen = ref(false);
 const editingRow = ref<DirectoryRow | null>(null);
 const createParentId = ref(0);
+const deletingAll = ref(false);
 const COL_MIN_WIDTH = 140;
 
 const dirExpanded = reactive<Record<number, boolean>>({});
@@ -53,31 +58,47 @@ provide("libraryDirExpanded", dirExpanded);
 
 const treeData = computed(() => buildDirectoryRowTree(props.directories));
 const navTreeFull = computed(() =>
-  buildLibraryNavTree(treeData.value, props.posts, props.directories),
+  buildDirectoriesAdminNavTree(props.directories, props.posts),
 );
 const navTree = computed(() =>
-  filterLibraryNavTree(navTreeFull.value, filterQuery.value),
+  filterDirectoriesAdminNavTree(navTreeFull.value, filterQuery.value),
 );
 
 const searchActive = computed(() => Boolean(filterQuery.value.trim()));
 
-const selectedDir = computed(() => {
-  if (selectedDirectoryId.value == null) return null;
-  return findLibraryNavNode(navTreeFull.value, selectedDirectoryId.value);
-});
+const isAllSelected = computed(
+  () => selectedDirectoryId.value === ALL_DIRECTORIES_NAV_ID,
+);
+
+const selectedDir = computed(() =>
+  findDirectoriesAdminNavNode(navTreeFull.value, selectedDirectoryId.value),
+);
 
 const selectedRow = computed(() => {
-  if (selectedDirectoryId.value == null) return null;
+  if (!isRealDirectoryNavId(selectedDirectoryId.value)) return null;
   return props.directories.find((r) => r.id === selectedDirectoryId.value) ?? null;
 });
 
+const rootDirectories = computed(() =>
+  props.directories
+    .filter((r) => r.parent_id == null)
+    .sort(
+      (a, b) =>
+        compareObsidianSortOrder(a.sort_order, b.sort_order) || a.id - b.id,
+    ),
+);
+
+const totalPostsInDirectories = computed(() =>
+  props.posts.filter((p) => p.directory_id != null).length,
+);
+
 const childDirectories = computed(() => {
-  if (selectedDirectoryId.value == null) return [];
+  if (!isRealDirectoryNavId(selectedDirectoryId.value)) return [];
   return getChildDirectories(selectedDirectoryId.value, props.directories);
 });
 
 const subtreePostCount = computed(() => {
-  if (selectedDirectoryId.value == null) return 0;
+  if (!isRealDirectoryNavId(selectedDirectoryId.value)) return 0;
   return countPostsInSubtree(
     selectedDirectoryId.value,
     props.posts,
@@ -94,20 +115,16 @@ watch(manageOpen, (open) => {
 
 function applyFocus(focus: number | null | undefined) {
   const id =
-    focus != null && focus > 0 && findLibraryNavNode(navTreeFull.value, focus)
+    focus != null &&
+    focus > 0 &&
+    findDirectoriesAdminNavNode(navTreeFull.value, focus)
       ? focus
       : null;
   if (id != null) {
     selectDirectory(id);
     return;
   }
-  const first = firstLibraryNavNode(navTreeFull.value);
-  selectedDirectoryId.value = first?.id ?? null;
-  if (first) {
-    expandLibraryAncestors(navTreeFull.value, first.id, (dirId, open) => {
-      dirExpanded[dirId] = open;
-    });
-  }
+  selectedDirectoryId.value = ALL_DIRECTORIES_NAV_ID;
 }
 
 watch(
@@ -138,7 +155,7 @@ function selectDirectory(id: number) {
 
 function walkSetExpanded(nodes: LibraryNavNode[], value: boolean) {
   for (const n of nodes) {
-    if (n.children.length) {
+    if (n.id > 0 && n.children.length) {
       dirExpanded[n.id] = value;
       walkSetExpanded(n.children, value);
     }
@@ -200,6 +217,63 @@ function openChildDelete(row: DirectoryRow, ev: Event) {
   void onDeleteDirectory(row);
 }
 
+function childDirCount(dirId: number) {
+  return props.directories.filter((r) => r.parent_id === dirId).length;
+}
+
+async function onDeleteAllDirectories() {
+  const roots = rootDirectories.value;
+  if (!roots.length) return;
+
+  const dirCount = props.directories.length;
+  const postCount = totalPostsInDirectories.value;
+  const message =
+    postCount > 0
+      ? `将永久删除全部 ${dirCount} 个目录节点及 ${postCount} 篇目录内文章，确定继续？`
+      : `将永久删除全部 ${dirCount} 个目录节点，确定继续？`;
+
+  await nextTick();
+  try {
+    await confirmDestructive(message, "删除全部目录");
+  } catch {
+    return;
+  }
+
+  deletingAll.value = true;
+  let totalDirsRemoved = 0;
+  let totalPostsDeleted = 0;
+  const deletedSlugs: string[] = [];
+
+  try {
+    for (const root of roots) {
+      const res = await $fetch<{
+        posts_deleted: number;
+        directories_removed: number;
+        deleted_post_slugs?: string[];
+      }>(`/api/directories/${root.id}`, { method: "DELETE" });
+      totalDirsRemoved += res.directories_removed;
+      totalPostsDeleted += res.posts_deleted;
+      deletedSlugs.push(...(res.deleted_post_slugs ?? []));
+    }
+    for (const slug of deletedSlugs) {
+      postCache.removeDetail(slug);
+    }
+    selectedDirectoryId.value = ALL_DIRECTORIES_NAV_ID;
+    ElMessage.success(
+      totalPostsDeleted > 0
+        ? `已删除全部目录（${totalDirsRemoved} 个节点、${totalPostsDeleted} 篇文章）`
+        : `已删除全部目录（${totalDirsRemoved} 个节点）`,
+    );
+    emit("success");
+  } catch (e: unknown) {
+    const err = e as { data?: { statusMessage?: string }; message?: string };
+    ElMessage.error(err?.data?.statusMessage || err?.message || "删除失败");
+    emit("success");
+  } finally {
+    deletingAll.value = false;
+  }
+}
+
 async function onDeleteDirectory(row: DirectoryRow) {
   const hasSub = hasDirChildren(row.id);
   const postCount = countPostsInSubtree(row.id, props.posts, props.directories);
@@ -229,7 +303,7 @@ async function onDeleteDirectory(row: DirectoryRow) {
         : `已删除 ${res.directories_removed} 个目录节点`,
     );
     if (selectedDirectoryId.value === row.id) {
-      selectedDirectoryId.value = null;
+      selectedDirectoryId.value = ALL_DIRECTORIES_NAV_ID;
     }
     emit("success");
   } catch (e: unknown) {
@@ -274,7 +348,7 @@ async function onDeleteDirectory(row: DirectoryRow) {
       </p>
 
       <div v-else-if="navTree.length" class="admin-module-page__nav-tree">
-        <LibraryDirectoryNav
+        <DirectoriesAdminNav
           :nodes="navTree"
           :selected-id="selectedDirectoryId"
           @select="selectDirectory"
@@ -290,7 +364,114 @@ async function onDeleteDirectory(row: DirectoryRow) {
     </aside>
 
     <section class="admin-card admin-card--pad admin-module-page__list">
-      <template v-if="selectedDir">
+      <template v-if="isAllSelected && selectedDir">
+        <div class="admin-module-page__list-head">
+          <h2 class="admin-module-page__list-title">{{ selectedDir.name }}</h2>
+          <p class="admin-module-page__list-path">{{ selectedDir.pathLabel }}</p>
+          <div class="admin-module-page__list-tags">
+            <el-tag size="small" type="info">
+              {{ props.directories.length }} 个目录
+            </el-tag>
+            <el-tag size="small">{{ totalPostsInDirectories }} 篇目录内文章</el-tag>
+          </div>
+        </div>
+
+        <div class="admin-module-page__list-actions">
+          <el-button type="primary" plain :icon="FolderAdd" @click="openCreate(0)">
+            新建顶级目录
+          </el-button>
+          <el-button
+            type="danger"
+            plain
+            :icon="Delete"
+            :loading="deletingAll"
+            :disabled="!rootDirectories.length"
+            @click="onDeleteAllDirectories"
+          >
+            删除全部目录
+          </el-button>
+        </div>
+
+        <h3 class="admin-module-page__section-title">一级目录</h3>
+        <div class="admin-module-page__table-wrap">
+          <div class="admin-data-table-wrap admin-data-table-wrap--auto">
+            <el-table
+              :data="rootDirectories"
+              class="admin-data-table admin-data-table--clickable"
+              stripe
+              table-layout="auto"
+              row-key="id"
+              empty-text="暂无目录"
+              @row-click="onChildRowClick"
+            >
+              <el-table-column
+                prop="name"
+                label="名称"
+                :min-width="COL_MIN_WIDTH"
+                align="left"
+                header-align="left"
+                class-name="admin-data-table__col-left admin-data-table__col-left--indent"
+                label-class-name="admin-data-table__col-left admin-data-table__col-left--indent"
+              >
+                <template #default="{ row }">
+                  <span class="admin-data-table__name">{{ row.name }}</span>
+                </template>
+              </el-table-column>
+              <el-table-column
+                prop="slug"
+                label="slug"
+                :min-width="COL_MIN_WIDTH"
+                align="center"
+                header-align="center"
+              >
+                <template #default="{ row }">
+                  <code class="admin-data-table__slug">{{ row.slug }}</code>
+                </template>
+              </el-table-column>
+              <el-table-column
+                label="子目录"
+                :min-width="88"
+                align="center"
+                header-align="center"
+              >
+                <template #default="{ row }">
+                  <span class="admin-data-table__muted">{{ childDirCount(row.id) }}</span>
+                </template>
+              </el-table-column>
+              <el-table-column
+                label="文章数"
+                :min-width="100"
+                align="center"
+                header-align="center"
+              >
+                <template #default="{ row }">
+                  <span class="admin-data-table__muted">{{ childPostCount(row.id) }}</span>
+                </template>
+              </el-table-column>
+              <el-table-column
+                label="操作"
+                width="120"
+                align="center"
+                header-align="center"
+                fixed="right"
+              >
+                <template #default="{ row }">
+                  <div class="admin-data-table__actions">
+                    <el-button type="primary" link :icon="Edit" @click="openChildEdit(row, $event)">
+                      编辑
+                    </el-button>
+                    <el-button type="danger" link :icon="Delete" @click="openChildDelete(row, $event)">
+                      删除
+                    </el-button>
+                  </div>
+                </template>
+              </el-table-column>
+            </el-table>
+          </div>
+        </div>
+      </template>
+
+      <template v-else-if="selectedDir">
         <div class="admin-module-page__list-head">
           <h2 class="admin-module-page__list-title">{{ selectedDir.name }}</h2>
           <p class="admin-module-page__list-path">{{ selectedDir.pathLabel }}</p>
@@ -401,10 +582,7 @@ async function onDeleteDirectory(row: DirectoryRow) {
       </template>
 
       <div v-else class="admin-module-page__empty">
-        <el-empty
-          description="在左侧选择一个目录，或新建顶级目录"
-          :image-size="72"
-        />
+        <el-empty description="在左侧选择「全部」或某个目录" :image-size="72" />
       </div>
     </section>
   </div>

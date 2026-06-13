@@ -2,6 +2,7 @@ import type { DirectoryRowTree } from "~/composables/buildDirectoryTreeSelect";
 import type { DirectoryNavNode } from "~/composables/buildDirectoryNavTree";
 import type { DirectoryRow } from "~/types/directory";
 import type { PostListItem } from "~/types/post";
+import { compareObsidianSortOrder } from "~/utils/sortOrder";
 
 export type LibraryNavNode = DirectoryNavNode & {
   postCount: number;
@@ -145,7 +146,10 @@ export function getChildDirectories(
 ): DirectoryRow[] {
   return flat
     .filter((r) => r.parent_id === directoryId)
-    .sort((a, b) => a.sort_order - b.sort_order || a.id - b.id);
+    .sort(
+      (a, b) =>
+        compareObsidianSortOrder(a.sort_order, b.sort_order) || a.id - b.id,
+    );
 }
 
 export function statusLabel(status: PostListItem["status"]): string {

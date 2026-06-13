@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS directories (
   parent_id BIGINT UNSIGNED NULL DEFAULT NULL,
   name VARCHAR(191) NOT NULL,
   slug VARCHAR(191) NOT NULL,
-  sort_order INT NOT NULL DEFAULT 0,
+  sort_order INT NULL DEFAULT NULL COMMENT 'Obsidian 目录名数字前缀；NULL 同级排最后',
   created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
   updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
   PRIMARY KEY (id),
@@ -28,6 +28,7 @@ CREATE TABLE IF NOT EXISTS directories (
 CREATE TABLE IF NOT EXISTS posts (
   id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   directory_id BIGINT UNSIGNED NULL DEFAULT NULL,
+  sort_order INT NULL DEFAULT NULL COMMENT 'Obsidian 文件名/标题数字前缀；NULL 同级排最后',
   slug VARCHAR(191) NOT NULL,
   title VARCHAR(191) NOT NULL,
   body MEDIUMTEXT NOT NULL,
@@ -38,6 +39,7 @@ CREATE TABLE IF NOT EXISTS posts (
   PRIMARY KEY (id),
   UNIQUE KEY uk_posts_slug (slug),
   KEY idx_posts_directory_id (directory_id),
+  KEY idx_posts_directory_sort (directory_id, sort_order),
   KEY idx_posts_status (status),
   KEY idx_posts_published_at (published_at),
   CONSTRAINT fk_posts_directory

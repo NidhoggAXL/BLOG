@@ -1,6 +1,6 @@
 import { createError } from 'h3'
 import type { PoolConnection } from 'mysql2/promise'
-import { buildManualPostPathSlug } from '../../utils/postPathSlug'
+import { buildManualPostPathSlug, postSortOrderFromStem } from '../../utils/postPathSlug'
 import { directoryPathSlugById } from './directory-path-slug'
 
 type DbExecutor = { query: PoolConnection['query'] }
@@ -11,7 +11,7 @@ export async function resolveManualPostSlug(
   directoryId: number | null,
   rawTitle: string,
   excludePostId?: number,
-): Promise<{ title: string; slug: string }> {
+): Promise<{ title: string; slug: string; sort_order: number | null }> {
   const dirPrefix = await directoryPathSlugById(executor, directoryId)
   const { title, slug, stem } = buildManualPostPathSlug(dirPrefix, rawTitle)
 
@@ -56,5 +56,5 @@ export async function resolveManualPostSlug(
     })
   }
 
-  return { title, slug }
+  return { title, slug, sort_order: postSortOrderFromStem(stem) }
 }

@@ -138,7 +138,7 @@ function importPostMeta(
   depth: number,
   usedSlugs: Set<string>,
   usedTitles: Set<string>,
-): { title: string; slug: string; stem: string } {
+): { title: string; slug: string; stem: string; sort_order: number | null } {
   const stem = fileStemFromArchivePath(path);
   const slug = assignPathSlug(
     buildPathSlugFromArchivePath(path, depth),
@@ -146,7 +146,8 @@ function importPostMeta(
   );
   const titleBase = formatPublicDisplayName(stem, stem || "未命名");
   const title = uniqueStringKey(titleBase, usedTitles);
-  return { title, slug, stem };
+  const sort_order = obsidianOrderFromSegment(stem);
+  return { title, slug, stem, sort_order };
 }
 
 async function findDirectoryUnderParent(
@@ -190,7 +191,7 @@ async function ensureDirectoryPath(
           `目录「${name}」在同一父级下已存在，请调整压缩包路径或先合并目录`,
         );
       }
-      const sortOrder = obsidianOrderFromSegment(seg) ?? 0;
+      const sortOrder = obsidianOrderFromSegment(seg);
       const [res] = await conn.query<ResultSetHeader>(
         "INSERT INTO directories (parent_id, name, slug, sort_order) VALUES (?, ?, ?, ?)",
         [currentParent, name, slug, sortOrder],
@@ -261,7 +262,7 @@ export async function runImportBatch(
       directoryId = ensured;
     }
 
-    const { title, slug, stem } = importPostMeta(
+    const { title, slug, stem, sort_order } = importPostMeta(
       path,
       depth,
       usedSlugs,
@@ -282,8 +283,8 @@ export async function runImportBatch(
     const publishedAt = options.status === "published" ? new Date() : null;
 
     const [res] = await conn.query<ResultSetHeader>(
-      "INSERT INTO posts (directory_id, slug, title, body, status, published_at) VALUES (?, ?, ?, ?, ?, ?)",
-      [directoryId, slug, title, body, options.status, publishedAt],
+      "INSERT INTO posts (directory_id, sort_order, slug, title, body, status, published_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+      [directoryId, sort_order, slug, title, body, options.status, publishedAt],
     );
 
     const postId = res.insertId;

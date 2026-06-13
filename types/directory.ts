@@ -4,5 +4,5 @@ export interface DirectoryRow {
   parent_id: number | null
   name: string
   slug: string
-  sort_order: number
+  sort_order: number | null
 }

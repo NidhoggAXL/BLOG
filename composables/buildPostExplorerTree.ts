@@ -1,5 +1,6 @@
 import type { DirectoryRowTree } from '~/composables/buildDirectoryTreeSelect'
 import type { PostListItem } from '~/types/post'
+import { compareObsidianSortOrder } from '~/utils/sortOrder'
 
 const UNCATEGORIZED_FOLDER_ID = -1
 
@@ -42,6 +43,20 @@ export function buildPostExplorerTree(
       byDir.get(p.directory_id)!.push(leaf)
     }
   }
+
+  const postById = new Map(posts.map((p) => [p.id, p]))
+  const sortPostNodes = (nodes: ExplorerNode[]) => {
+    nodes.sort((a, b) => {
+      if (a.kind !== 'post' || b.kind !== 'post') return 0
+      const pa = postById.get(a.id)!
+      const pb = postById.get(b.id)!
+      const order = compareObsidianSortOrder(pa.sort_order, pb.sort_order)
+      if (order !== 0) return order
+      return pa.title.localeCompare(pb.title, 'zh-CN')
+    })
+  }
+  sortPostNodes(uncategorized)
+  for (const files of byDir.values()) sortPostNodes(files)
 
   function wrapDir(d: DirectoryRowTree): ExplorerNode {
     const dirChildren = (d.children ?? []).map(wrapDir)

@@ -30,7 +30,7 @@ const dialogTitle = computed(() => (isEdit.value ? '编辑目录' : '新建目�
 const form = reactive({
   parent_id: 0 as number,
   name: '',
-  sort_order: 0,
+  sort_order: null as number | null,
 })
 
 const flatList = ref<DirectoryRow[]>([])
@@ -50,6 +50,13 @@ const treeData = computed<DirectoryTreeNode[]>(() => {
 
 const loadingTree = ref(false)
 const submitting = ref(false)
+
+const sortOrderInput = computed({
+  get: () => form.sort_order ?? undefined,
+  set: (v: number | undefined) => {
+    form.sort_order = v ?? null
+  },
+})
 
 async function loadTree() {
   loadingTree.value = true
@@ -81,7 +88,7 @@ watch(
       Object.assign(form, {
         parent_id: props.defaultParentId ?? 0,
         name: '',
-        sort_order: 0,
+        sort_order: null,
       })
     }
   },
@@ -157,7 +164,14 @@ async function onSubmit() {
         />
       </el-form-item>
       <el-form-item label="排序（同级）">
-        <el-input-number v-model="form.sort_order" :min="0" :max="999999" controls-position="right" />
+        <el-input-number
+          v-model="sortOrderInput"
+          :min="1"
+          :max="999999"
+          controls-position="right"
+          clearable
+          placeholder="留空则从名称前缀推断"
+        />
       </el-form-item>
     </el-form>
 

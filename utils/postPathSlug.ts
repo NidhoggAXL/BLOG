@@ -1,4 +1,6 @@
 import type { DirectoryRow } from '~/types/directory'
+import { obsidianOrderFromSegment } from './obsidianDisplayPrefix'
+import { pathSlugStem } from './pathSlug'
 import { postTitleAndSlug } from './postSlug'
 
 /** 由扁平目录表构建路径型 slug 前缀（与 server directoryPathSlugById 一致，用 directories.slug） */
@@ -36,4 +38,13 @@ export function buildManualPostPathSlug(
   const prefix = directoryPathSlug.trim().replace(/\/+$/, '')
   const slug = (prefix ? `${prefix}/${stem}` : stem).slice(0, 191)
   return { title, slug, stem }
+}
+
+/** 从文件名 stem 或 slug 末段解析 Obsidian 排序数字，无前缀则为 null */
+export function postSortOrderFromStem(stem: string): number | null {
+  return obsidianOrderFromSegment(stem)
+}
+
+export function postSortOrderFromSlug(slug: string): number {
+  return postSortOrderFromStem(pathSlugStem(slug))
 }

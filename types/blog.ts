@@ -6,7 +6,7 @@ export interface TreeNode {
   id: string;
   name: string;
   type: TreeNodeType;
-  sort_order?: number;
+  sort_order?: number | null;
   sort_time?: number;
   slug?: string;
   children?: TreeNode[];
@@ -17,13 +17,14 @@ export interface PublicDirectoryRow {
   parent_id: number | null;
   name: string;
   slug: string;
-  sort_order: number;
+  sort_order: number | null;
 }
 
 export interface PublicPostMeta {
   slug: string;
   title: string;
   directory_id?: number | null;
+  sort_order?: number | null;
   date: string;
   tags: string[];
 }

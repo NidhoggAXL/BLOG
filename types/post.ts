@@ -2,6 +2,7 @@
 export interface PostListItem {
   id: number
   directory_id: number | null
+  sort_order: number | null
   slug: string
   title: string
   status: 'draft' | 'published' | 'archived'

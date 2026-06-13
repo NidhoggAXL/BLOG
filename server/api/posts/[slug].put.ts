@@ -51,7 +51,7 @@ export default defineEventHandler(async (event) => {
       }
     }
 
-    const { title, slug: newSlug } = await resolveManualPostSlug(
+    const { title, slug: newSlug, sort_order } = await resolveManualPostSlug(
       conn,
       directoryId,
       rawTitle,
@@ -66,9 +66,9 @@ export default defineEventHandler(async (event) => {
     }
 
     await conn.query(
-      `UPDATE posts SET directory_id = ?, slug = ?, title = ?, body = ?, status = ?, published_at = ?
+      `UPDATE posts SET directory_id = ?, sort_order = ?, slug = ?, title = ?, body = ?, status = ?, published_at = ?
        WHERE id = ?`,
-      [directoryId, newSlug, title, rawMarkdown, status, publishedAt, existing.id],
+      [directoryId, sort_order, newSlug, title, rawMarkdown, status, publishedAt, existing.id],
     )
 
     const normalizedExplicit = slugs.map((s) => String(s).trim()).filter(Boolean)
@@ -79,7 +79,7 @@ export default defineEventHandler(async (event) => {
     queuePostEmbeddingsSync(pool, existing.id, event)
 
     const [rows] = await conn.query(
-      'SELECT id, directory_id, slug, title, body, status, published_at, created_at, updated_at FROM posts WHERE id = ? LIMIT 1',
+      'SELECT id, directory_id, sort_order, slug, title, body, status, published_at, created_at, updated_at FROM posts WHERE id = ? LIMIT 1',
       [existing.id],
     )
     const updated = (rows as PostDetail[])[0]!

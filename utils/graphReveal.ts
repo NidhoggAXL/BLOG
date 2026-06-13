@@ -26,8 +26,10 @@ export function filterEdgesForVisibleNodes(
 
 /** 播放动画节奏与物理参数（paceMultiplier 越大步进间隔越长） */
 export const GRAPH_REVEAL_TIMING = {
-  paceMultiplier: 3.5,
-  fadeMs: 1000,
+  paceMultiplier: 1.08,
+  fadeMs: 380,
+  /** 双链从已显现节点拉向新节点的时长（Obsidian 式） */
+  linkPullMs: 340,
   stepReheat: 0.028,
   startReheat: 0.06,
   alphaTarget: 0.022,
@@ -41,11 +43,51 @@ export function getGraphRevealPacing(nodeCount: number) {
       : nodeCount <= 150
         ? 2
         : Math.max(2, Math.ceil(nodeCount / 55))
-  const msPerNode = Math.max(180, Math.min(320, 160 + nodeCount * 0.22))
+  const msPerNode = Math.max(58, Math.min(125, 40 + nodeCount * 0.09))
   const stepMs = Math.round(
     msPerNode * stepSize * GRAPH_REVEAL_TIMING.paceMultiplier,
   )
   return { stepSize, stepMs }
+}
+
+export interface GraphLinkPullSpec {
+  key: string
+  anchorId: number
+  extendId: number
+}
+
+/** 本步新显现的边：锚点为已可见端，extend 为刚加入或同批加入的一端 */
+export function newlyVisibleLinkPulls(
+  edges: GraphData['edges'],
+  visibleBefore: Set<number>,
+  visibleAfter: Set<number>,
+): GraphLinkPullSpec[] {
+  const specs: GraphLinkPullSpec[] = []
+  for (const e of edges) {
+    if (!visibleAfter.has(e.source) || !visibleAfter.has(e.target)) continue
+    if (visibleBefore.has(e.source) && visibleBefore.has(e.target)) continue
+
+    const key = `${e.source}-${e.target}`
+    let anchorId: number
+    let extendId: number
+    if (visibleBefore.has(e.source)) {
+      anchorId = e.source
+      extendId = e.target
+    } else if (visibleBefore.has(e.target)) {
+      anchorId = e.target
+      extendId = e.source
+    } else {
+      anchorId = e.source
+      extendId = e.target
+    }
+    specs.push({ key, anchorId, extendId })
+  }
+  return specs
+}
+
+export function easeRevealProgress(t: number): number {
+  const x = Math.max(0, Math.min(1, t))
+  return 1 - (1 - x) ** 3
 }
 
 /**

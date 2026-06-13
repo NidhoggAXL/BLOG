@@ -57,15 +57,15 @@ export default defineEventHandler(async (event) => {
       }
     }
 
-    const { title, slug } = await resolveManualPostSlug(conn, directoryId, rawTitle)
+    const { title, slug, sort_order } = await resolveManualPostSlug(conn, directoryId, rawTitle)
 
     await conn.beginTransaction()
 
     const publishedAt = status === 'published' ? new Date() : null
 
     const [res] = await conn.query<ResultSetHeader>(
-      'INSERT INTO posts (directory_id, slug, title, body, status, published_at) VALUES (?, ?, ?, ?, ?, ?)',
-      [directoryId, slug, title, rawMarkdown, status, publishedAt],
+      'INSERT INTO posts (directory_id, sort_order, slug, title, body, status, published_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [directoryId, sort_order, slug, title, rawMarkdown, status, publishedAt],
     )
 
     const insertId = res.insertId

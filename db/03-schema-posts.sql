@@ -4,6 +4,7 @@ USE blog;
 CREATE TABLE IF NOT EXISTS posts (
   id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   directory_id BIGINT UNSIGNED NULL DEFAULT NULL,
+  sort_order INT NULL DEFAULT NULL COMMENT 'Obsidian 文件名/标题数字前缀；NULL 同级排最后',
   slug VARCHAR(191) NOT NULL,
   title VARCHAR(191) NOT NULL,
   body MEDIUMTEXT NOT NULL,
@@ -14,6 +15,7 @@ CREATE TABLE IF NOT EXISTS posts (
   PRIMARY KEY (id),
   UNIQUE KEY uk_posts_slug (slug),
   KEY idx_posts_directory_id (directory_id),
+  KEY idx_posts_directory_sort (directory_id, sort_order),
   KEY idx_posts_status (status),
   KEY idx_posts_published_at (published_at),
   CONSTRAINT fk_posts_directory
