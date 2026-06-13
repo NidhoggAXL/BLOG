@@ -1,5 +1,7 @@
 /** 客户端/服务端共用的维基链接解析（不依赖 MySQL） */
 
+import { formatPublicDisplayName } from './obsidianDisplayPrefix'
+
 export function maskMarkdownForWikilinkScan(markdown: string): string {
   let s = markdown.replace(/```[\s\S]*?```/g, (block) =>
     " ".repeat(block.length),
@@ -95,6 +97,17 @@ export function buildWikilinkEmbedBlock(
   );
 }
 
+function resolveWikilinkDisplayText(
+  parsed: WikilinkInnerParsed,
+  stripOrderPrefix: boolean,
+): string {
+  if (parsed.link_display) return parsed.link_display
+  const raw =
+    parsed.raw_target.split('|')[0]?.trim() || parsed.slug_lookup
+  if (!stripOrderPrefix) return raw
+  return formatPublicDisplayName(raw, raw)
+}
+
 /** 将 [[...]] / ![[...]] 转为链接或嵌入块（跳过代码块） */
 export function applyWikilinkMarkdownLinks(
   markdown: string,
@@ -103,10 +116,13 @@ export function applyWikilinkMarkdownLinks(
     basePath?: string;
     /** 已解析的嵌入正文（Obsidian 式 transclusion） */
     embedContentByLookup?: Map<string, WikilinkEmbedContent>;
+    /** 公开页：去掉 Obsidian 排序前缀作为锚文本 */
+    stripOrderPrefix?: boolean;
   },
 ): string {
   const basePath = options?.basePath ?? "/admin/posts";
   const embedMap = options?.embedContentByLookup;
+  const stripOrderPrefix = options?.stripOrderPrefix === true;
   const masked = maskMarkdownForWikilinkScan(markdown);
   const re = /(!?)\[\[([^\]\n]+)\]\]/g;
   const replacements: { start: number; end: number; replacement: string }[] =
@@ -118,10 +134,7 @@ export function applyWikilinkMarkdownLinks(
     const embed = m[1] === "!";
     const parsed = parseWikilinkInner(m[2]);
     if (!parsed) continue;
-    const display =
-      parsed.link_display ||
-      parsed.raw_target.split("|")[0]?.trim() ||
-      parsed.slug_lookup;
+    const display = resolveWikilinkDisplayText(parsed, stripOrderPrefix);
     const targetSlug = lookupToSlug.get(parsed.slug_lookup);
     const embedContent = embedMap?.get(
       wikilinkEmbedCacheKey(parsed.slug_lookup, parsed.anchor),

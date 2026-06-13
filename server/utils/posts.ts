@@ -78,6 +78,7 @@ export async function getPostDetail(
   opts?: {
     publishedOnly?: boolean;
     linkBasePath?: string;
+    stripOrderPrefix?: boolean;
     includeWikilinkSlugs?: boolean;
     includeWikilinkRefs?: boolean;
   },
@@ -99,6 +100,7 @@ export async function getPostDetail(
   try {
     body_html = await renderPostBodyHtmlForPool(pool, row.body, {
       linkBasePath: opts?.linkBasePath,
+      stripOrderPrefix: opts?.stripOrderPrefix,
     });
   } catch {
     body_html = "";
@@ -136,6 +138,7 @@ export async function getPublicPostDetail(
   const detail = await getPostDetail(pool, slug, {
     publishedOnly: true,
     linkBasePath,
+    stripOrderPrefix: true,
     includeWikilinkSlugs: false,
     includeWikilinkRefs: true,
   });

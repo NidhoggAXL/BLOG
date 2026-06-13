@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { PostWikilinkRef } from "~/types/post";
+import { formatPublicDisplayName } from "~/utils/obsidianDisplayPrefix";
 
 const props = withDefaults(
   defineProps<{
@@ -50,8 +51,11 @@ function postHref(slug: string) {
 }
 
 function linkLabel(ref: PostWikilinkRef) {
-  const title = ref.title?.trim();
-  return title || ref.slug;
+  const raw = ref.title?.trim() || ref.slug;
+  if (props.variant === "public") {
+    return formatPublicDisplayName(raw, raw);
+  }
+  return raw;
 }
 
 function selectTab(id: WikilinkTab) {

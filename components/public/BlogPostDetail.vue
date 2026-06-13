@@ -1,9 +1,14 @@
 <script setup lang="ts">
 import type { PublicPostDetail } from "~/types/blog";
+import { formatPublicDisplayName } from "~/utils/obsidianDisplayPrefix";
 
 const props = defineProps<{
   post: PublicPostDetail;
 }>();
+
+const displayTitle = computed(() =>
+  formatPublicDisplayName(props.post.title?.trim() || props.post.slug),
+);
 
 const { onMarkdownContentClick } = useSpaMarkdownLinkClick("/blog/");
 </script>
@@ -11,7 +16,7 @@ const { onMarkdownContentClick } = useSpaMarkdownLinkClick("/blog/");
 <template>
   <article class="post-detail">
     <header class="post-header">
-      <h1 class="post-title">{{ post.title }}</h1>
+      <h1 class="post-title">{{ displayTitle }}</h1>
       <div class="post-meta">
         <time :datetime="post.date">{{ post.date }}</time>
         <span v-if="post.tags.length" class="meta-divider">·</span>

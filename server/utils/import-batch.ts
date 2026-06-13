@@ -2,6 +2,10 @@ import type { PoolConnection } from "mysql2/promise";
 import type { ResultSetHeader } from "mysql2";
 import { findSiblingDirectoryByName } from "./directory-sibling-uniqueness";
 import { directoryNameAndSlug } from "../../utils/directorySlug";
+import {
+  formatPublicDisplayName,
+  obsidianOrderFromSegment,
+} from "../../utils/obsidianDisplayPrefix";
 import { postTitleAndSlug } from "./slugify";
 import {
   buildImportBatchWikilinkLookup,
@@ -90,28 +94,41 @@ function dirSegmentsForPath(path: string, depth: number): string[] {
   return segs.slice(depth, -1);
 }
 
-function uniquePostTitleAndSlug(
+function uniqueStringKey(
   base: string,
   used: Set<string>,
-): { title: string; slug: string } {
+  fallback = "未命名",
+): string {
   const keyOf = (s: string) => s.toLowerCase();
-  let s = base.slice(0, 191) || "未命名";
+  let s = base.slice(0, 191) || fallback;
   if (!used.has(keyOf(s))) {
     used.add(keyOf(s));
-    return { title: s, slug: s };
+    return s;
   }
   let i = 2;
   while (i < 10000) {
     const candidate = `${base.slice(0, 180)}-${i}`.slice(0, 191);
     if (!used.has(keyOf(candidate))) {
       used.add(keyOf(candidate));
-      return { title: candidate, slug: candidate };
+      return candidate;
     }
     i++;
   }
-  const fallback = `post-${Date.now()}`.slice(0, 191);
-  used.add(keyOf(fallback));
-  return { title: fallback, slug: fallback };
+  const unique = `post-${Date.now()}`.slice(0, 191);
+  used.add(keyOf(unique));
+  return unique;
+}
+
+function uniqueImportPostMeta(
+  stem: string,
+  usedSlugs: Set<string>,
+  usedTitles: Set<string>,
+): { title: string; slug: string } {
+  const slugBase = postTitleAndSlug(stem).slug;
+  const titleBase = formatPublicDisplayName(stem, stem || "未命名");
+  const slug = uniqueStringKey(slugBase, usedSlugs);
+  const title = uniqueStringKey(titleBase, usedTitles);
+  return { title, slug };
 }
 
 async function findDirectoryUnderParent(
@@ -155,9 +172,10 @@ async function ensureDirectoryPath(
           `目录「${name}」在同一父级下已存在，请调整压缩包路径或先合并目录`,
         );
       }
+      const sortOrder = obsidianOrderFromSegment(seg) ?? 0;
       const [res] = await conn.query<ResultSetHeader>(
-        "INSERT INTO directories (parent_id, name, slug, sort_order) VALUES (?, ?, ?, 0)",
-        [currentParent, name, slug],
+        "INSERT INTO directories (parent_id, name, slug, sort_order) VALUES (?, ?, ?, ?)",
+        [currentParent, name, slug, sortOrder],
       );
       dirId = res.insertId;
       stats.created++;
@@ -177,6 +195,7 @@ export async function runImportBatch(
   const warnings: string[] = [];
   const post_slugs: string[] = [];
   const usedSlugs = new Set<string>();
+  const usedTitles = new Set<string>();
   const dirCache = new Map<string, number>();
   const dirStats = { created: 0 };
 
@@ -184,6 +203,12 @@ export async function runImportBatch(
   const slugRows = existingSlugRows[0] as { slug: string }[];
   for (const r of slugRows) {
     usedSlugs.add(r.slug.toLowerCase());
+  }
+
+  const existingTitleRows = await conn.query("SELECT title FROM posts");
+  const titleRows = existingTitleRows[0] as { title: string }[];
+  for (const r of titleRows) {
+    usedTitles.add(r.title.toLowerCase());
   }
 
   const depth = Math.max(0, Math.floor(options.archiveDepth));
@@ -219,8 +244,7 @@ export async function runImportBatch(
 
     const fileName = path.split("/").pop() ?? path;
     const stem = fileName.replace(/\.(md|markdown|mdown|mkd)$/i, "").trim();
-    const base = postTitleAndSlug(stem);
-    const { title, slug } = uniquePostTitleAndSlug(base.slug, usedSlugs);
+    const { title, slug } = uniqueImportPostMeta(stem, usedSlugs, usedTitles);
     const rawBody = stripMergedOutboundWikilinkBlock(
       typeof file.body === "string" ? file.body : "",
     );

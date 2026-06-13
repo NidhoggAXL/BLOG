@@ -48,7 +48,9 @@ function embedContentMapFromResolved(
 export async function renderPostBodyHtmlWithEmbeds(
   markdown: string,
   lookupToSlug: Map<string, string>,
+  options?: { stripOrderPrefix?: boolean },
 ): Promise<string> {
+  const stripOrderPrefix = options?.stripOrderPrefix === true;
   let embedContentByLookup = new Map<string, WikilinkEmbedContent>();
   if (markdown.includes("![[")) {
     try {
@@ -56,7 +58,7 @@ export async function renderPostBodyHtmlWithEmbeds(
         "/api/wikilinks/embeds",
         {
           method: "POST",
-          body: { markdown },
+          body: { markdown, stripOrderPrefix },
         },
       );
       embedContentByLookup = embedContentMapFromResolved(res.embeds);
@@ -65,7 +67,10 @@ export async function renderPostBodyHtmlWithEmbeds(
     }
   }
   return renderMarkdownPipeline(markdown, (md) =>
-    applyWikilinkMarkdownLinks(md, lookupToSlug, { embedContentByLookup }),
+    applyWikilinkMarkdownLinks(md, lookupToSlug, {
+      embedContentByLookup,
+      stripOrderPrefix,
+    }),
   );
 }
 
@@ -73,8 +78,11 @@ export async function renderPostBodyHtmlWithEmbeds(
 export async function renderPostBodyHtml(
   markdown: string,
   lookupToSlug: Map<string, string>,
+  options?: { stripOrderPrefix?: boolean },
 ): Promise<string> {
   return renderMarkdownPipeline(markdown, (md) =>
-    applyWikilinkMarkdownLinks(md, lookupToSlug),
+    applyWikilinkMarkdownLinks(md, lookupToSlug, {
+      stripOrderPrefix: options?.stripOrderPrefix === true,
+    }),
   );
 }

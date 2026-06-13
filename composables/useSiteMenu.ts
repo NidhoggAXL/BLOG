@@ -1,6 +1,7 @@
 import type { TreeNode } from "~/types/blog";
 import type { PublicDirectoryRow } from "~/types/blog";
 import type { PublicPostMeta } from "~/types/blog";
+import { formatPublicDisplayName } from "~/utils/obsidianDisplayPrefix";
 
 type MutableFolderNode = {
   id: string;
@@ -12,8 +13,7 @@ type MutableFolderNode = {
 };
 
 function treeNodeLabel(raw: string, fallback = "未命名"): string {
-  const s = raw.trim();
-  return s || fallback;
+  return formatPublicDisplayName(raw, fallback);
 }
 
 function fileNameWithoutExt(slug: string): string {

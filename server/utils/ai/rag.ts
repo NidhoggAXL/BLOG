@@ -4,6 +4,7 @@ import type { AiRuntimeConfig } from './config'
 import { searchSimilarChunks, type RetrievedChunk } from './embeddings'
 import { ollamaChatStream, type ChatMessage } from './ollama'
 import { chitChatReply, isChitChatQuery } from './rag-query'
+import { formatPublicDisplayName } from '../../../utils/obsidianDisplayPrefix'
 
 export type RagSource = { slug: string; title: string }
 
@@ -57,7 +58,10 @@ export async function retrieveRagContext(
   for (const c of chunks) {
     if (seen.has(c.slug)) continue
     seen.add(c.slug)
-    sources.push({ slug: c.slug, title: c.title })
+    sources.push({
+      slug: c.slug,
+      title: formatPublicDisplayName(c.title, c.title),
+    })
   }
   return { chunks, sources }
 }

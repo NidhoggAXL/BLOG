@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { PublicPostMeta } from "~/types/blog";
+import { formatPublicDisplayName } from "~/utils/obsidianDisplayPrefix";
 
 defineProps<{
   posts: PublicPostMeta[];
@@ -26,7 +27,9 @@ const emit = defineEmits<{
         :to="`/blog/${post.slug}`"
         class="blog-item"
       >
-        <h2 class="blog-item__title">{{ post.title?.trim() || "未命名" }}</h2>
+        <h2 class="blog-item__title">
+          {{ formatPublicDisplayName(post.title?.trim() || post.slug) }}
+        </h2>
         <p class="blog-item__meta">{{ post.date }}</p>
       </NuxtLink>
     </div>

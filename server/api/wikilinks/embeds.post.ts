@@ -1,5 +1,6 @@
 import type { WikilinkEmbedResolved } from "~/types/wikilink";
 import { sliceMarkdownByHeadingAnchor } from "../../../utils/markdownAnchorSlice";
+import { formatPublicDisplayName } from "../../../utils/obsidianDisplayPrefix";
 import { renderMarkdownPipeline } from "../../../utils/markedSetup";
 import {
   applyWikilinkMarkdownLinks,
@@ -15,6 +16,7 @@ async function buildInnerHtml(
   executor: { query: Parameters<typeof resolveWikilinkLookup>[0]["query"] },
   body: string,
   anchor: string | null,
+  stripOrderPrefix: boolean,
 ): Promise<string> {
   const sliced = sliceMarkdownByHeadingAnchor(body, anchor);
   const parsed = parseWikilinksFromBody(sliced);
@@ -26,18 +28,29 @@ async function buildInnerHtml(
     }
   }
   return renderMarkdownPipeline(sliced, (md) =>
-    applyWikilinkMarkdownLinks(md, lookup, { basePath: "/admin/posts" }),
+    applyWikilinkMarkdownLinks(md, lookup, {
+      basePath: "/admin/posts",
+      stripOrderPrefix,
+    }),
   );
 }
 
-function embedDisplayTitle(postTitle: string, anchor: string | null): string {
-  if (!anchor?.trim()) return postTitle;
-  return `${postTitle} › ${anchor.trim()}`;
+function embedDisplayTitle(
+  postTitle: string,
+  anchor: string | null,
+  stripOrderPrefix: boolean,
+): string {
+  const title = stripOrderPrefix
+    ? formatPublicDisplayName(postTitle, postTitle)
+    : postTitle;
+  if (!anchor?.trim()) return title;
+  return `${title} › ${anchor.trim()}`;
 }
 
 export default defineEventHandler(async (event) => {
-  const body = await readBody<{ markdown?: string }>(event);
+  const body = await readBody<{ markdown?: string; stripOrderPrefix?: boolean }>(event);
   const markdown = typeof body.markdown === "string" ? body.markdown : "";
+  const stripOrderPrefix = body.stripOrderPrefix === true;
 
   const all = parseWikilinksFromBody(markdown);
   const embeds = all.filter((p) => p.link_kind === "embed");
@@ -98,7 +111,7 @@ export default defineEventHandler(async (event) => {
       [post.id],
     );
     const postBody = (postRows as { body: string }[])[0]?.body ?? "";
-    const body_html = await buildInnerHtml(pool, postBody, row.anchor);
+    const body_html = await buildInnerHtml(pool, postBody, row.anchor, stripOrderPrefix);
     const cacheKey = wikilinkEmbedCacheKey(row.slug_lookup, row.anchor);
 
     out.push({
@@ -107,7 +120,7 @@ export default defineEventHandler(async (event) => {
       anchor: row.anchor,
       resolve_status: "ok",
       target_slug: post.slug,
-      target_title: embedDisplayTitle(post.title, row.anchor),
+      target_title: embedDisplayTitle(post.title, row.anchor, stripOrderPrefix),
       body_html,
       cache_key: cacheKey,
     });

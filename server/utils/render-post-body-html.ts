@@ -1,5 +1,6 @@
 import type { Pool } from "mysql2/promise";
 import { sliceMarkdownByHeadingAnchor } from "../../utils/markdownAnchorSlice";
+import { formatPublicDisplayName } from "../../utils/obsidianDisplayPrefix";
 import { renderMarkdownPipeline } from "../../utils/markedSetup";
 import {
   applyWikilinkMarkdownLinks,
@@ -14,6 +15,7 @@ import {
 
 export type RenderPostBodyHtmlOptions = {
   linkBasePath?: string;
+  stripOrderPrefix?: boolean;
 };
 
 async function buildEmbedInnerHtml(
@@ -21,6 +23,7 @@ async function buildEmbedInnerHtml(
   body: string,
   anchor: string | null,
   linkBasePath: string,
+  stripOrderPrefix: boolean,
 ): Promise<string> {
   const sliced = sliceMarkdownByHeadingAnchor(body, anchor);
   const parsed = parseWikilinksFromBody(sliced);
@@ -32,13 +35,23 @@ async function buildEmbedInnerHtml(
     }
   }
   return renderMarkdownPipeline(sliced, (md) =>
-    applyWikilinkMarkdownLinks(md, lookup, { basePath: linkBasePath }),
+    applyWikilinkMarkdownLinks(md, lookup, {
+      basePath: linkBasePath,
+      stripOrderPrefix,
+    }),
   );
 }
 
-function embedDisplayTitle(postTitle: string, anchor: string | null): string {
-  if (!anchor?.trim()) return postTitle;
-  return `${postTitle} › ${anchor.trim()}`;
+function embedDisplayTitle(
+  postTitle: string,
+  anchor: string | null,
+  stripOrderPrefix: boolean,
+): string {
+  const title = stripOrderPrefix
+    ? formatPublicDisplayName(postTitle, postTitle)
+    : postTitle;
+  if (!anchor?.trim()) return title;
+  return `${title} › ${anchor.trim()}`;
 }
 
 /** 服务端渲染文章正文（双链 + 嵌入 + Markdown + Shiki） */
@@ -54,6 +67,7 @@ export async function renderPostBodyHtmlForPool(
     options?.linkBasePath ??
     config.adminWikilinkBasePath ??
     "/admin/posts";
+  const stripOrderPrefix = options?.stripOrderPrefix === true;
 
   const parsed = parseWikilinksFromBody(markdown);
   const resolved = await resolveParsedWikilinksForPreview(pool, parsed);
@@ -88,10 +102,11 @@ export async function renderPostBodyHtmlForPool(
       postBody,
       row.anchor,
       linkBasePath,
+      stripOrderPrefix,
     );
 
     embedContentByLookup.set(cacheKey, {
-      title: embedDisplayTitle(post.title, row.anchor),
+      title: embedDisplayTitle(post.title, row.anchor, stripOrderPrefix),
       slug: post.slug,
       body_html,
     });
@@ -101,6 +116,7 @@ export async function renderPostBodyHtmlForPool(
     applyWikilinkMarkdownLinks(md, lookupToSlug, {
       basePath: linkBasePath,
       embedContentByLookup,
+      stripOrderPrefix,
     }),
   );
 }
