@@ -1,4 +1,5 @@
 import type { H3Event } from 'h3'
+import { isAiAbortedError } from './abort'
 import type { AiRuntimeConfig } from './config'
 import { searchSimilarChunks, type RetrievedChunk } from './embeddings'
 import { ollamaChatStream, type ChatMessage } from './ollama'
@@ -44,9 +45,11 @@ export async function retrieveRagContext(
   pool: ReturnType<typeof useMysqlPool>,
   ai: AiRuntimeConfig,
   question: string,
+  signal?: AbortSignal,
 ): Promise<{ chunks: RetrievedChunk[]; sources: RagSource[] }> {
   const chunks = await searchSimilarChunks(pool, ai, question, {
     topK: ai.maxContextChunks,
+    signal,
   })
   const seen = new Set<string>()
   const sources: RagSource[] = []
@@ -62,6 +65,7 @@ export async function* streamRagAnswer(
   pool: ReturnType<typeof useMysqlPool>,
   ai: AiRuntimeConfig,
   question: string,
+  signal?: AbortSignal,
 ): AsyncGenerator<
   | { type: 'sources'; sources: RagSource[] }
   | { type: 'chunk'; content: string }
@@ -73,16 +77,21 @@ export async function* streamRagAnswer(
     return
   }
 
+  if (signal?.aborted) return
+
   let chunks: RetrievedChunk[] = []
   let sources: RagSource[] = []
   try {
-    const retrieved = await retrieveRagContext(pool, ai, trimmed)
+    const retrieved = await retrieveRagContext(pool, ai, trimmed, signal)
     chunks = retrieved.chunks
     sources = retrieved.sources
-  } catch {
+  } catch (e: unknown) {
+    if (isAiAbortedError(e) || signal?.aborted) return
     yield { type: 'chunk', content: '知识库检索失败，请确认 Ollama 与 embedding 模型已就绪。' }
     return
   }
+
+  if (signal?.aborted) return
 
   yield { type: 'sources', sources }
 
@@ -96,12 +105,14 @@ export async function* streamRagAnswer(
 
   const messages = buildRagMessages(trimmed, chunks)
   try {
-    for await (const text of ollamaChatStream(ai, messages)) {
+    for await (const text of ollamaChatStream(ai, messages, signal)) {
+      if (signal?.aborted) return
       if (text) {
         yield { type: 'chunk', content: text }
       }
     }
   } catch (e: unknown) {
+    if (isAiAbortedError(e) || signal?.aborted) return
     const err = e as { message?: string }
     yield {
       type: 'chunk',

@@ -1002,7 +1002,10 @@ defineExpose({
         <p>暂无文章节点</p>
       </div>
       <div v-if="showLoadingMask" class="graph-canvas__loading-mask">
-        加载中…
+        <div class="graph-canvas__loading-panel">
+          <div class="route-loading-spinner graph-canvas__loading-spinner" aria-hidden="true" />
+          <p class="graph-canvas__loading-label">正在加载</p>
+        </div>
       </div>
     </div>
   </div>
@@ -1048,6 +1051,32 @@ defineExpose({
 
 .graph-canvas__loading-mask {
   background: color-mix(in srgb, var(--admin-shell-bg) 75%, transparent);
+  backdrop-filter: blur(2px);
+}
+
+.graph-canvas__loading-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 18px 22px;
+  border-radius: 12px;
+  border: 1px solid var(--admin-border);
+  background: var(--admin-card-bg);
+  box-shadow: var(--admin-card-shadow);
+}
+
+.graph-canvas__loading-spinner {
+  width: 26px;
+  height: 26px;
+  border-width: 3px;
+}
+
+.graph-canvas__loading-label {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--admin-muted);
 }
 
 :deep(.graph-link) {

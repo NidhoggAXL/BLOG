@@ -1,0 +1,69 @@
+/**
+ * 全站隐藏滚动条（保留滚轮 / 触控 / 键盘滚动）
+ * 覆盖原生滚动条、Element Plus、CodeMirror 等常见滚动容器
+ */
+
+html,
+body,
+#__nuxt {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+    width: 0;
+    height: 0;
+  }
+}
+
+*,
+*::before,
+*::after {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+*::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+/* Element Plus 自定义滚动条轨道 */
+.el-scrollbar__bar,
+.el-virtual-scrollbar,
+.el-table__horizontal-scrollbar {
+  display: none !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+.el-scrollbar__wrap,
+.el-select-dropdown__wrap,
+.el-select-dropdown .el-scrollbar__view,
+.el-dropdown-menu,
+.el-cascader-menu,
+.el-cascader-panel,
+.el-autocomplete-suggestion,
+.el-picker-panel,
+.el-picker-panel__body-wrapper,
+.el-table__body-wrapper,
+.el-table__header-wrapper,
+.el-table__footer-wrapper,
+.el-dialog__body,
+.el-drawer__body,
+.el-message-box__message,
+.el-tree,
+.el-tree-node__children,
+.el-textarea__inner {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+/* CodeMirror 6 */
+.cm-scroller,
+.cm-gutters,
+.cm-content {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}

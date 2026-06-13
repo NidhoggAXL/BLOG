@@ -52,6 +52,7 @@
       </aside>
 
       <div class="admin-main">
+        <RouteLoadingOverlay />
         <header class="admin-card admin-toolbar-card" aria-label="功能按钮">
           <div class="toolbar-title">{{ title }}</div>
           <div class="toolbar-actions">
@@ -214,6 +215,14 @@ function isMenuActive(to: string) {
   min-height: 0;
   padding: 14px 12px;
   overflow-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+    width: 0;
+    height: 0;
+  }
 }
 
 .nav-item {

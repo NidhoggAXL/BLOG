@@ -9,7 +9,9 @@ export function usePublicContentRefresh() {
 
   async function refreshPublicContent(): Promise<void> {
     if (refreshing.value) return;
+    const { startTask, stopTask } = useRouteLoading();
     refreshing.value = true;
+    startTask();
     try {
       await refreshAll();
       await refreshNuxtData((key) => {
@@ -21,6 +23,7 @@ export function usePublicContentRefresh() {
       lastRefreshedAt.value = Date.now();
     } finally {
       refreshing.value = false;
+      stopTask();
     }
   }
 

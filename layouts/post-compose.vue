@@ -1,5 +1,6 @@
 <template>
   <div class="post-compose-shell">
+    <RouteLoadingOverlay />
     <slot />
   </div>
 </template>
@@ -10,6 +11,7 @@
 
 <style scoped lang="less">
 .post-compose-shell {
+  position: relative;
   display: flex;
   flex-direction: column;
   height: 100vh;

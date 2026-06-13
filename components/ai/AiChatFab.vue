@@ -228,10 +228,20 @@ html.theme-light .ai-chat-drawer {
     --el-button-active-bg-color: #083550;
     --el-button-active-border-color: #083550;
   }
+
+  .ai-chat-panel__composer .el-button--default.is-disabled,
+  .ai-chat-panel__composer .el-button--default:disabled {
+    --el-button-bg-color: rgba(245, 247, 248, 0.95);
+    --el-button-border-color: rgba(14, 32, 48, 0.14);
+    --el-button-text-color: #8a9499;
+    --el-button-disabled-bg-color: rgba(245, 247, 248, 0.95);
+    --el-button-disabled-border-color: rgba(14, 32, 48, 0.14);
+    --el-button-disabled-text-color: #8a9499;
+  }
 }
 
-[data-theme='light'] .ai-chat-drawer .el-button--primary,
-html.theme-light .ai-chat-drawer .el-button--primary {
+[data-theme='light'] .ai-chat-drawer .el-button--primary:not(.is-disabled),
+html.theme-light .ai-chat-drawer .el-button--primary:not(.is-disabled) {
   --el-button-bg-color: #145a82 !important;
   --el-button-border-color: #145a82 !important;
 }
@@ -325,10 +335,20 @@ html.theme-dark .ai-chat-drawer {
     --el-button-active-bg-color: #c42f3b;
     --el-button-active-border-color: #c42f3b;
   }
+
+  .ai-chat-panel__composer .el-button--default.is-disabled,
+  .ai-chat-panel__composer .el-button--default:disabled {
+    --el-button-bg-color: rgba(12, 14, 18, 0.55);
+    --el-button-border-color: rgba(255, 255, 255, 0.14);
+    --el-button-text-color: #7d8a96;
+    --el-button-disabled-bg-color: rgba(12, 14, 18, 0.55);
+    --el-button-disabled-border-color: rgba(255, 255, 255, 0.14);
+    --el-button-disabled-text-color: #7d8a96;
+  }
 }
 
-[data-theme='dark'] .ai-chat-drawer .el-button--primary,
-html.theme-dark .ai-chat-drawer .el-button--primary {
+[data-theme='dark'] .ai-chat-drawer .el-button--primary:not(.is-disabled),
+html.theme-dark .ai-chat-drawer .el-button--primary:not(.is-disabled) {
   --el-button-bg-color: #e63946 !important;
   --el-button-border-color: #e63946 !important;
 }

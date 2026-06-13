@@ -1,6 +1,16 @@
 export default defineNuxtRouteMiddleware(async (to, from) => {
   const auth = useAuthStore()
+  const { startTask, stopTask } = useRouteLoading()
+  const needsAuthCheck =
+    to.path === '/login' ||
+    to.path === '/admin' ||
+    to.path.startsWith('/admin/')
 
+  if (import.meta.client && needsAuthCheck) {
+    startTask()
+  }
+
+  try {
   if (to.path === '/login') {
     // 刚退出：跳过 fetchMe，避免 Cookie 尚未从浏览器移除时被判定为仍登录并跳回后台
     if (to.query.loggedOut === '1') {
@@ -37,6 +47,11 @@ export default defineNuxtRouteMiddleware(async (to, from) => {
         path: '/login',
         query: { redirect: to.fullPath },
       })
+    }
+  }
+  } finally {
+    if (import.meta.client && needsAuthCheck) {
+      stopTask()
     }
   }
 })

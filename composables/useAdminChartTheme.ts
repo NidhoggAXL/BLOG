@@ -11,24 +11,24 @@ export type AdminChartTheme = {
 }
 
 const LIGHT_FALLBACK: AdminChartTheme = {
-  colors: ['#c45c26', '#2d8a6e', '#b8860b', '#c43d4d', '#7a5a8c'],
-  text: '#1a1a18',
-  muted: '#8a8a82',
-  axis: '#e4e2dc',
-  grid: 'rgba(196, 92, 38, 0.14)',
-  tooltipBg: '#ffffff',
-  tooltipBorder: '#e4e2dc',
+  colors: ['#145a82', '#2d8a6e', '#b8860b', '#c43d4d', '#7a5a8c'],
+  text: '#0a1218',
+  muted: '#3a4f5e',
+  axis: '#b4c4d4',
+  grid: 'rgba(20, 90, 130, 0.14)',
+  tooltipBg: '#edf3f8',
+  tooltipBorder: '#b4c4d4',
   animation: true,
 }
 
 const DARK_FALLBACK: AdminChartTheme = {
-  colors: ['#e07a3a', '#3db896', '#e0b84a', '#e86a78', '#a88bc4'],
-  text: '#e8e6e1',
-  muted: '#787670',
-  axis: '#333330',
-  grid: 'rgba(224, 122, 58, 0.18)',
-  tooltipBg: '#1e1e1c',
-  tooltipBorder: '#333330',
+  colors: ['#e63946', '#3db896', '#e0b84a', '#e86a78', '#a88bc4'],
+  text: '#f0f3f6',
+  muted: '#9aa6b2',
+  axis: '#3a4048',
+  grid: 'rgba(230, 57, 70, 0.18)',
+  tooltipBg: '#161a22',
+  tooltipBorder: '#3a4048',
   animation: true,
 }
 

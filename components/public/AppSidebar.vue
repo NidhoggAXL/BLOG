@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { HomeFilled } from "@element-plus/icons-vue";
+
 /** @deprecated 请使用 PublicSidebar；保留以兼容旧引用 */
 const route = useRoute();
 const { toggleTheme, isDark } = useAppTheme();
@@ -61,7 +63,18 @@ watch(
   >
     <div class="sidebar-card card">
       <div class="side-header">
-        <h2 class="side-title">目录</h2>
+        <div class="side-header__row">
+          <h2 class="side-title">目录</h2>
+          <NuxtLink
+            v-if="isBlogReadMode"
+            to="/blog"
+            class="side-home-btn"
+            title="返回首页"
+            aria-label="返回首页"
+          >
+            <el-icon><HomeFilled /></el-icon>
+          </NuxtLink>
+        </div>
         <nav v-if="breadcrumbs.length > 1" class="breadcrumb">
           <template
             v-for="(crumb, index) in breadcrumbs"
@@ -170,12 +183,48 @@ watch(
   margin-bottom: 0.75rem;
 }
 
+.side-header__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.65rem;
+}
+
 .side-title {
-  margin: 0 0 0.65rem;
+  margin: 0;
   font-size: 1rem;
   font-weight: 600;
   color: var(--text);
   letter-spacing: 0.02em;
+}
+
+.side-home-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--muted);
+  text-decoration: none;
+  transition:
+    background 0.12s,
+    color 0.12s,
+    border-color 0.12s;
+
+  :deep(.el-icon) {
+    font-size: 16px;
+  }
+
+  &:hover {
+    background: var(--bg-hover);
+    color: var(--accent);
+    border-color: color-mix(in srgb, var(--accent) 40%, var(--border));
+  }
 }
 
 .breadcrumb {

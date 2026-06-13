@@ -5,4 +5,5 @@ export type ChatMessageItem = {
   sources?: { slug: string; title: string }[]
   streaming?: boolean
   error?: boolean
+  stopped?: boolean
 }

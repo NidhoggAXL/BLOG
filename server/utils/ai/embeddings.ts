@@ -1,5 +1,6 @@
 import type { Pool, PoolConnection } from 'mysql2/promise'
 import type { AiRuntimeConfig } from './config'
+import { AiAbortedError } from './abort'
 import { getAiConfig } from './config'
 import { chunkPostText } from './chunking'
 import { ollamaEmbed } from './ollama'
@@ -137,12 +138,16 @@ export async function searchSimilarChunks(
   pool: Pool,
   ai: AiRuntimeConfig,
   queryText: string,
-  opts?: { topK?: number; excludePostIds?: number[] },
+  opts?: { topK?: number; excludePostIds?: number[]; signal?: AbortSignal },
 ): Promise<RetrievedChunk[]> {
   const topK = opts?.topK ?? ai.maxContextChunks
   const exclude = new Set(opts?.excludePostIds ?? [])
 
-  const queryVec = await ollamaEmbed(ai, queryText.trim())
+  if (opts?.signal?.aborted) {
+    throw new AiAbortedError()
+  }
+
+  const queryVec = await ollamaEmbed(ai, queryText.trim(), opts?.signal)
   const rows = await loadPublishedEmbeddingRows(pool)
 
   const scored: RetrievedChunk[] = []

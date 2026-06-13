@@ -138,6 +138,14 @@ async function confirmDelete() {
   background: var(--admin-nav-hover);
   max-height: 200px;
   overflow: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+    width: 0;
+    height: 0;
+  }
 }
 
 .post-delete-dlg__backlinks-title {

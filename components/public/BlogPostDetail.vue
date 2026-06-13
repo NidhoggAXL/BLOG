@@ -11,7 +11,6 @@ const { onMarkdownContentClick } = useSpaMarkdownLinkClick("/blog/");
 <template>
   <article class="post-detail">
     <header class="post-header">
-      <NuxtLink to="/blog" class="back-link">← 返回首页</NuxtLink>
       <h1 class="post-title">{{ post.title }}</h1>
       <div class="post-meta">
         <time :datetime="post.date">{{ post.date }}</time>
@@ -44,17 +43,6 @@ const { onMarkdownContentClick } = useSpaMarkdownLinkClick("/blog/");
   margin-bottom: 2rem;
   padding-bottom: 1.5rem;
   border-bottom: 1px solid var(--border);
-}
-
-.back-link {
-  display: inline-block;
-  margin-bottom: 1rem;
-  font-size: 0.875rem;
-  color: var(--muted);
-
-  &:hover {
-    color: var(--accent);
-  }
 }
 
 .post-title {

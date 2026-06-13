@@ -180,11 +180,11 @@ useHead(() => ({
                     </li>
                     <li v-if="post.published_at" class="post-view__info-row">
                       <span class="post-view__info-label">发布时间</span>
-                      <span class="post-view__info-value">{{ post.published_at }}</span>
+                      <span class="post-view__info-value">{{ formatDateTimeZh24(post.published_at) }}</span>
                     </li>
                     <li class="post-view__info-row">
                       <span class="post-view__info-label">更新时间</span>
-                      <span class="post-view__info-value">{{ post.updated_at }}</span>
+                      <span class="post-view__info-value">{{ formatDateTimeZh24(post.updated_at) }}</span>
                     </li>
                   </ul>
                 </div>

@@ -1,4 +1,5 @@
 import { assertAiEnabled } from '../../../utils/ai/config'
+import { createClientAbortSignal, isAiAbortedError } from '../../../utils/ai/abort'
 import { OllamaError } from '../../../utils/ai/ollama'
 import { checkPublicAiRateLimit, getClientIp } from '../../../utils/ai/rate-limit'
 import { createRagEventStream, streamRagAnswer } from '../../../utils/ai/rag'
@@ -27,10 +28,13 @@ export default defineEventHandler(async (event) => {
 
   const pool = useMysqlPool()
   const stream = createRagEventStream(event)
+  const clientSignal = createClientAbortSignal(event)
 
   void (async () => {
     try {
-      for await (const part of streamRagAnswer(pool, ai, message)) {
+      for await (const part of streamRagAnswer(pool, ai, message, clientSignal)) {
+        if (clientSignal.aborted) break
+
         if (part.type === 'sources') {
           await stream.push({
             event: 'sources',
@@ -48,8 +52,13 @@ export default defineEventHandler(async (event) => {
           })
         }
       }
-      await stream.push({ event: 'done', data: '{}' })
+
+      if (!clientSignal.aborted) {
+        await stream.push({ event: 'done', data: '{}' })
+      }
     } catch (e: unknown) {
+      if (isAiAbortedError(e) || clientSignal.aborted) return
+
       const err = e as OllamaError | { message?: string; statusCode?: number }
       const statusCode = 'statusCode' in err && err.statusCode ? err.statusCode : 503
       const msg =

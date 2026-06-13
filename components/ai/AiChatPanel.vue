@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Delete, Promotion } from '@element-plus/icons-vue'
+import { Delete, Promotion, VideoPause } from '@element-plus/icons-vue'
 import { storeToRefs } from 'pinia'
 import type { ChatMessageItem } from '~/types/ai'
 import { useAiChatStore } from '~/stores/aiChat'
@@ -22,6 +22,10 @@ const { messages, assistantHtmlById, sending, hasMessages, isStreaming } =
 
 const input = ref('')
 const renderTimers = new Map<string, ReturnType<typeof setTimeout>>()
+const activeAbort = ref<AbortController | null>(null)
+let activeReader: ReadableStreamDefaultReader<Uint8Array> | null = null
+
+const canStop = computed(() => sending.value || isStreaming.value)
 
 const canSend = computed(
   () => !props.disabled && !sending.value && input.value.trim().length > 0,
@@ -80,7 +84,61 @@ watch(
 
 onBeforeUnmount(() => {
   clearRenderTimers()
+  activeAbort.value?.abort()
+  void activeReader?.cancel()
 })
+
+function finalizeAssistantMessage(assistantId: string, opts?: { stopped?: boolean }) {
+  const target = messages.value.find((m) => m.id === assistantId)
+  if (!target) return
+  target.streaming = false
+  if (opts?.stopped) {
+    target.stopped = true
+    if (!target.content.trim()) {
+      target.content = '（已停止生成）'
+    }
+    return
+  }
+  if (!target.error && target.content) {
+    target.content = sanitizeRagAssistantAnswer(target.content, {
+      hasRetrievedChunks: (target.sources?.length ?? 0) > 0,
+    })
+    if (isRagFallbackOnlyAnswer(target.content)) {
+      target.sources = []
+    }
+  }
+}
+
+function processSseBlock(
+  assistantId: string,
+  eventName: string,
+  dataLine: string,
+) {
+  const target = messages.value.find((m) => m.id === assistantId)
+  if (!target) return
+
+  if (eventName === 'chunk') {
+    const payload = JSON.parse(dataLine) as { content?: string }
+    target.content += payload.content ?? ''
+  } else if (eventName === 'sources') {
+    const payload = JSON.parse(dataLine) as {
+      sources?: { slug: string; title: string }[]
+    }
+    target.sources = payload.sources ?? []
+  } else if (eventName === 'error') {
+    const payload = JSON.parse(dataLine) as { message?: string }
+    target.content = payload.message || '问答失败'
+    target.error = true
+    target.streaming = false
+  } else if (eventName === 'done') {
+    finalizeAssistantMessage(assistantId)
+  }
+}
+
+function onStop() {
+  activeAbort.value?.abort()
+  void activeReader?.cancel()
+}
 
 async function onClearSession() {
   if (!canClear.value) return
@@ -94,6 +152,8 @@ async function onClearSession() {
       },
     )
     clearRenderTimers()
+    activeAbort.value?.abort()
+    void activeReader?.cancel()
     aiChat.clearSession()
     input.value = ''
     ElMessage.success('对话已清空')
@@ -117,11 +177,16 @@ async function onSend() {
   input.value = ''
   sending.value = true
 
+  activeAbort.value?.abort()
+  const abort = new AbortController()
+  activeAbort.value = abort
+
   try {
     const res = await fetch('/api/public/ai/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ message: text }),
+      signal: abort.signal,
     })
 
     if (!res.ok) {
@@ -131,12 +196,13 @@ async function onSend() {
 
     const reader = res.body?.getReader()
     if (!reader) throw new Error('无法读取流式响应')
+    activeReader = reader
 
     const decoder = new TextDecoder()
     let buffer = ''
-    const assistant = () => messages.value.find((m) => m.id === assistantId)
 
     while (true) {
+      if (abort.signal.aborted) break
       const { done, value } = await reader.read()
       if (done) break
       buffer += decoder.decode(value, { stream: true })
@@ -152,50 +218,21 @@ async function onSend() {
           if (line.startsWith('data:')) dataLine = line.slice(5).trim()
         }
         if (!dataLine) continue
-
-        const target = assistant()
-        if (!target) continue
-
-        if (eventName === 'chunk') {
-          const payload = JSON.parse(dataLine) as { content?: string }
-          target.content += payload.content ?? ''
-        } else if (eventName === 'sources') {
-          const payload = JSON.parse(dataLine) as {
-            sources?: { slug: string; title: string }[]
-          }
-          target.sources = payload.sources ?? []
-        } else if (eventName === 'error') {
-          const payload = JSON.parse(dataLine) as { message?: string }
-          target.content = payload.message || '问答失败'
-          target.error = true
-        } else if (eventName === 'done') {
-          target.streaming = false
-          if (!target.error && target.content) {
-            target.content = sanitizeRagAssistantAnswer(target.content, {
-              hasRetrievedChunks: (target.sources?.length ?? 0) > 0,
-            })
-            if (isRagFallbackOnlyAnswer(target.content)) {
-              target.sources = []
-            }
-          }
-        }
+        processSseBlock(assistantId, eventName, dataLine)
       }
     }
 
-    const target = assistant()
-    if (target) {
-      target.streaming = false
-      if (!target.error && target.content) {
-        target.content = sanitizeRagAssistantAnswer(target.content, {
-          hasRetrievedChunks: (target.sources?.length ?? 0) > 0,
-        })
-        if (isRagFallbackOnlyAnswer(target.content)) {
-          target.sources = []
-        }
-      }
+    if (abort.signal.aborted) {
+      finalizeAssistantMessage(assistantId, { stopped: true })
+    } else {
+      finalizeAssistantMessage(assistantId)
     }
   } catch (e: unknown) {
-    const err = e as { message?: string }
+    const err = e as { name?: string; message?: string }
+    if (err.name === 'AbortError' || abort.signal.aborted) {
+      finalizeAssistantMessage(assistantId, { stopped: true })
+      return
+    }
     const target = messages.value.find((m) => m.id === assistantId)
     if (target) {
       target.content = err.message || 'AI 服务不可用，请确认 Ollama 已启动'
@@ -203,6 +240,10 @@ async function onSend() {
       target.streaming = false
     }
   } finally {
+    activeReader = null
+    if (activeAbort.value === abort) {
+      activeAbort.value = null
+    }
     sending.value = false
     nextTick(() => scrollToBottom())
   }
@@ -297,7 +338,7 @@ watch(
         </div>
       </section>
 
-      <form class="ai-chat-panel__composer" @submit.prevent="onSend">
+      <form class="ai-chat-panel__composer" @submit.prevent="canStop ? onStop() : onSend()">
       <label class="ai-chat-panel__composer-label" for="ai-chat-input">
         输入问题
       </label>
@@ -310,12 +351,24 @@ watch(
         resize="none"
         placeholder="例如：我写过哪些关于 Nuxt 的内容？"
         :disabled="disabled || sending"
-        @keydown.enter.exact.prevent="onSend"
+        @keydown.enter.exact.prevent="!canStop && onSend()"
       />
       <el-button
-        type="primary"
+        v-if="canStop"
+        class="ai-chat-panel__stop-btn"
+        type="danger"
+        plain
+        :icon="VideoPause"
+        native-type="button"
+        @click="onStop"
+      >
+        停止
+      </el-button>
+      <el-button
+        v-else
+        class="ai-chat-panel__send-btn"
+        :type="canSend ? 'primary' : 'default'"
         :icon="Promotion"
-        :loading="sending"
         :disabled="!canSend"
         native-type="submit"
       >
@@ -371,10 +424,18 @@ watch(
   flex: 1;
   min-height: 0;
   overflow-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
   padding: 4px 2px 12px;
   display: flex;
   flex-direction: column;
   gap: 12px;
+
+  &::-webkit-scrollbar {
+    display: none;
+    width: 0;
+    height: 0;
+  }
 }
 
 .ai-chat-panel__empty {

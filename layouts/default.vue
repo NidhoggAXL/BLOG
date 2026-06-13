@@ -53,6 +53,7 @@ const {
       >
         <PublicSidebar v-if="showPublicSidebar" />
         <main class="app-main">
+          <RouteLoadingOverlay />
           <slot />
         </main>
       </div>
@@ -108,6 +109,7 @@ const {
 }
 
 .app-main {
+  position: relative;
   flex: 1;
   min-width: 0;
   min-height: 0;

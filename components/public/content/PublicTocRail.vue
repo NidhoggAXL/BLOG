@@ -68,13 +68,13 @@ defineProps<{
 }
 
 .toc-card--outline {
-  flex: 1 1 48%;
-  min-height: 8rem;
+  flex: 13 1 0;
+  min-height: 0;
 }
 
 .toc-card--links {
-  flex: 1 1 52%;
-  min-height: 9rem;
+  flex: 7 1 0;
+  min-height: 0;
 }
 
 .toc-card__head {
