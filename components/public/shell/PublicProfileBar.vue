@@ -1,6 +1,4 @@
 <script setup lang="ts">
-import { HomeFilled } from "@element-plus/icons-vue";
-
 withDefaults(
   defineProps<{
     /** 首页落地页：签名完整换行显示 */
@@ -11,9 +9,6 @@ withDefaults(
 
 const auth = useAuthStore();
 const { profile } = useSiteProfile();
-const route = useRoute();
-
-const isKgActive = computed(() => route.path === "/knowledge-graph");
 const adminEntryTo = computed(() => (auth.user ? "/admin" : "/login"));
 const adminEntryLabel = computed(() => (auth.user ? "管理" : "登录"));
 
@@ -37,15 +32,6 @@ const displayEmail = computed(() => {
     aria-label="站点信息"
   >
     <div class="profile-bar__identity">
-      <NuxtLink
-        v-if="isKgActive"
-        to="/blog"
-        class="profile-bar__home-btn"
-        title="返回首页"
-        aria-label="返回首页"
-      >
-        <el-icon><HomeFilled /></el-icon>
-      </NuxtLink>
       <img
         :src="profile.avatar"
         :alt="profile.name"
@@ -62,16 +48,6 @@ const displayEmail = computed(() => {
         <span v-if="displayEmail" class="profile-bar__email">{{ displayEmail }}</span>
       </div>
     </div>
-
-    <nav class="profile-bar__center">
-      <NuxtLink
-        to="/knowledge-graph"
-        class="profile-bar__kg-btn"
-        :class="{ 'profile-bar__kg-btn--active': isKgActive }"
-      >
-        知识图谱星球
-      </NuxtLink>
-    </nav>
 
     <div class="profile-bar__actions" aria-label="社交与联系">
       <NuxtLink
@@ -128,7 +104,7 @@ const displayEmail = computed(() => {
 
 .profile-bar {
   display: grid;
-  grid-template-columns: 1fr auto 1fr;
+  grid-template-columns: 1fr auto;
   align-items: center;
   gap: 1rem;
   width: 100%;
@@ -144,34 +120,6 @@ const displayEmail = computed(() => {
   gap: 0.75rem;
   justify-self: start;
   min-width: 0;
-}
-
-.profile-bar__home-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  width: 32px;
-  height: 32px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--bg-elevated);
-  color: var(--muted);
-  text-decoration: none;
-  transition:
-    background 0.15s,
-    color 0.15s,
-    border-color 0.15s;
-
-  :deep(.el-icon) {
-    font-size: 16px;
-  }
-
-  &:hover {
-    background: var(--bg-hover);
-    color: var(--accent);
-    border-color: color-mix(in srgb, var(--accent) 40%, var(--border));
-  }
 }
 
 .profile-bar__avatar {
@@ -276,13 +224,6 @@ const displayEmail = computed(() => {
     align-items: center;
   }
 
-  .profile-bar__center {
-    justify-self: auto;
-    width: 100%;
-    display: flex;
-    justify-content: center;
-  }
-
   .profile-bar__actions {
     justify-self: auto;
     justify-content: center;
@@ -293,43 +234,6 @@ const displayEmail = computed(() => {
 
   .profile-bar__action-label {
     display: inline;
-  }
-}
-
-.profile-bar__center {
-  justify-self: center;
-}
-
-.profile-bar__kg-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0.5rem 1.25rem;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--bg-elevated);
-  color: var(--text-secondary);
-  font-size: 0.9rem;
-  font-weight: 500;
-  text-decoration: none;
-  white-space: nowrap;
-  transition:
-    background 0.15s,
-    border-color 0.15s,
-    color 0.15s,
-    box-shadow 0.15s;
-
-  &:hover {
-    background: var(--bg-hover);
-    border-color: var(--accent);
-    color: var(--accent);
-  }
-
-  &--active {
-    background: var(--accent-soft);
-    border-color: var(--accent);
-    color: var(--accent);
-    box-shadow: var(--shadow);
   }
 }
 
@@ -402,26 +306,8 @@ const displayEmail = computed(() => {
 @media (max-width: 768px) {
   .profile-bar {
     grid-template-columns: 1fr auto;
-    grid-template-rows: auto auto;
     height: auto;
     padding: 0.85rem 1rem;
-  }
-
-  .profile-bar__identity {
-    grid-column: 1;
-    grid-row: 1;
-  }
-
-  .profile-bar__actions {
-    grid-column: 2;
-    grid-row: 1;
-  }
-
-  .profile-bar__center {
-    grid-column: 1 / -1;
-    grid-row: 2;
-    justify-self: center;
-    margin-top: 0.25rem;
   }
 }
 </style>

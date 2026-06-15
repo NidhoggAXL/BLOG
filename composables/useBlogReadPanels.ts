@@ -20,17 +20,11 @@ export function useBlogReadPanels() {
     () => isBlogPostDetail.value || isBlogDirBrowse.value,
   );
 
-  /** 仅知识图谱保留顶栏个人信息卡 */
-  const showPublicTopNav = computed(() => route.path === "/knowledge-graph");
-
   /** 前台主内容区统一内边距（侧栏/主卡片间距） */
   const isPublicContentInset = computed(() => {
     if (isBlogLanding.value) return false;
-    if (route.path === "/knowledge-graph") return true;
     return isBlogReadMode.value;
   });
-
-  const isKnowledgeGraphPage = computed(() => route.path === "/knowledge-graph");
 
   const showPublicSidebar = computed(() => isBlogReadMode.value);
 
@@ -41,9 +35,7 @@ export function useBlogReadPanels() {
     isBlogDirBrowse,
     isBlogPostDetail,
     isBlogReadMode,
-    showPublicTopNav,
     isPublicContentInset,
-    isKnowledgeGraphPage,
     showPublicSidebar,
   };
 }

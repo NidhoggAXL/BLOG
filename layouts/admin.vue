@@ -123,7 +123,6 @@ const menu = [
       { to: "/admin/posts/directories", label: "目录结构", icon: "▦" },
     ],
   },
-  { to: "/admin/graph", label: "知识图谱", icon: "⬡" },
   { to: "/admin/profile", label: "个人信息", icon: "◉" },
 ] as const;
 
@@ -133,7 +132,7 @@ const isPostsSectionRoute = computed(() => {
 });
 
 /** 需要占满工作区高度的页面（文章列表、图谱等） */
-const fillRoutes = ["/admin/posts", "/admin/posts/directories", "/admin/graph"];
+const fillRoutes = ["/admin/posts", "/admin/posts/directories"];
 
 /** 长表单/配置页：需在工作区内滚动，不能套用 fill 的 overflow:hidden */
 const fillRouteExcludes = ["/admin/posts/new"];

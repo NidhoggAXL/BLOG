@@ -13,7 +13,6 @@ const {
   tocRailOpen,
   isBlogLanding,
   isBlogReadMode,
-  showPublicTopNav,
   isPublicContentInset,
   showPublicSidebar,
 } = useBlogReadPanels()
@@ -27,7 +26,6 @@ const {
       'app-shell--blog-landing': isBlogLanding,
     }"
   >
-    <PublicTopNav v-if="showPublicTopNav" />
     <div
       class="app-body"
       :class="{

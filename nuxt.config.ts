@@ -60,8 +60,6 @@ export default defineNuxtConfig({
 
   routeRules: {
     "/": { redirect: "/blog" },
-    "/knowledge-graph": { ssr: false },
-    "/admin/graph": { ssr: false },
     "/admin/library": { redirect: "/admin/posts/directories" },
     /** 公开 API 由服务端 defineCachedEventHandler + 数据版本号失效，避免 SWR 导致刷新仍读到旧数据 */
     "/api/public/**": { cache: false },
