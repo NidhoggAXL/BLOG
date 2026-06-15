@@ -62,6 +62,9 @@ export default defineEventHandler(async (event) => {
     target_id: r.target_id,
     target_slug: r.target_slug,
     target_title: r.target_title,
+    ...(r.ambiguous_candidates?.length
+      ? { ambiguous_candidates: r.ambiguous_candidates }
+      : {}),
   }))
 
   return { links }

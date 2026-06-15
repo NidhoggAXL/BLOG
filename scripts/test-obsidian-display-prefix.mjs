@@ -4,6 +4,7 @@ import { fileStemFromName } from '../composables/inferPostImportFromMarkdown.ts'
 import { postTitleAndSlug } from '../utils/postSlug.ts'
 import {
   formatPublicDisplayName,
+  hasObsidianOrderPrefix,
   obsidianOrderFromSegment,
   stripObsidianOrderPrefix,
 } from '../utils/obsidianDisplayPrefix.ts'
@@ -49,6 +50,14 @@ describe('obsidianOrderFromSegment', () => {
   it('returns null when no leading digits', () => {
     assert.equal(obsidianOrderFromSegment('入门'), null)
     assert.equal(obsidianOrderFromSegment(''), null)
+  })
+})
+
+describe('hasObsidianOrderPrefix', () => {
+  it('detects order prefixes', () => {
+    assert.equal(hasObsidianOrderPrefix('01_简介'), true)
+    assert.equal(hasObsidianOrderPrefix('01 入门'), true)
+    assert.equal(hasObsidianOrderPrefix('读书笔记'), false)
   })
 })
 

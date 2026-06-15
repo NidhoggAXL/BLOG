@@ -78,7 +78,3 @@ export function firstDirectoriesAdminNavNode(
 ): DirectoriesAdminNavNode | null {
   return nodes[0] ?? null;
 }
-
-export function isRealDirectoryNavId(id: number | null): id is number {
-  return id != null && id > 0;
-}

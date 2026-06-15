@@ -3,6 +3,7 @@ import type { GraphSimNode } from '~/types/graph'
 import type { GraphSimulationBundle } from '~/utils/graphSimulation'
 import { applyGraphForces } from '~/utils/graphSimulation'
 import type { GraphForceSettings } from '~/types/graph'
+import { graphForceBudget } from '~/utils/obsidianGraphForces'
 
 /** 按连通分量分散初值，避免所有节点从中心一团出发 */
 export function findGraphComponents(
@@ -85,7 +86,7 @@ export function assignInitialGraphPositions(
   }
 }
 
-/** 首屏/重载后静默预热，得到更稳定的「星球」分布 */
+/** 首屏/重载后预热，得到更稳定的分布（同步版，小图用） */
 export function warmupGraphSimulation(
   bundle: GraphSimulationBundle,
   settings: GraphForceSettings,
@@ -93,14 +94,43 @@ export function warmupGraphSimulation(
   height: number,
   nodeCount: number,
 ): void {
-  const ticks = Math.min(
-    280,
-    Math.max(80, Math.round(70 + Math.sqrt(nodeCount) * 14)),
-  )
+  const { warmupTicks } = graphForceBudget(nodeCount)
   applyGraphForces(bundle, settings, width, height, 0)
   const sim = bundle.simulation
   sim.alpha(1).alphaTarget(0).restart()
-  for (let i = 0; i < ticks && sim.alpha() > sim.alphaMin(); i++) {
+  for (let i = 0; i < warmupTicks && sim.alpha() > sim.alphaMin(); i++) {
     sim.tick()
   }
+}
+
+/** 分帧预热，避免大图进入时长时间阻塞主线程 */
+export function warmupGraphSimulationAsync(
+  bundle: GraphSimulationBundle,
+  settings: GraphForceSettings,
+  width: number,
+  height: number,
+  nodeCount: number,
+  onBatch?: () => void,
+): Promise<void> {
+  const { warmupTicks, warmupBatch } = graphForceBudget(nodeCount)
+  applyGraphForces(bundle, settings, width, height, 0)
+  const sim = bundle.simulation
+  sim.alpha(1).alphaTarget(0).restart()
+
+  return new Promise((resolve) => {
+    let ticked = 0
+    const step = () => {
+      const end = Math.min(ticked + warmupBatch, warmupTicks)
+      for (; ticked < end && sim.alpha() > sim.alphaMin(); ticked++) {
+        sim.tick()
+      }
+      onBatch?.()
+      if (ticked < warmupTicks && sim.alpha() > sim.alphaMin()) {
+        requestAnimationFrame(step)
+      } else {
+        resolve()
+      }
+    }
+    requestAnimationFrame(step)
+  })
 }

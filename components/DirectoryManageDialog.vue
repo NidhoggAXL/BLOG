@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Check } from '@element-plus/icons-vue'
+import { manualDirectoryNameValidationError } from '~/utils/directorySlug'
 import { buildDirectoryTreeSelectData, type DirectoryTreeNode } from '~/composables/buildDirectoryTreeSelect'
 import { collectDescendantIdsIncludingSelfClient } from '~/composables/directoryDescendants'
 import type { DirectoryRow } from '~/types/directory'
@@ -99,6 +100,11 @@ async function onSubmit() {
     ElMessage.warning('请填写目录名称')
     return
   }
+  const prefixErr = manualDirectoryNameValidationError(form.name)
+  if (prefixErr) {
+    ElMessage.warning(prefixErr)
+    return
+  }
   submitting.value = true
   try {
     const body = {
@@ -160,7 +166,7 @@ async function onSubmit() {
           v-model="form.name"
           maxlength="191"
           show-word-limit
-          placeholder="名称与 slug 相同，如：01_(占位) 或 读书笔记"
+          placeholder="显示名称，如：读书笔记（勿写 01_ 等排序前缀，排序请用下方字段）"
         />
       </el-form-item>
       <el-form-item label="排序（同级）">
@@ -170,7 +176,7 @@ async function onSubmit() {
           :max="999999"
           controls-position="right"
           clearable
-          placeholder="留空则从名称前缀推断"
+          placeholder="留空则同级排最后"
         />
       </el-form-item>
     </el-form>

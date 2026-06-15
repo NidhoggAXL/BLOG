@@ -1,7 +1,6 @@
 import type { PoolConnection } from "mysql2/promise";
 import type { ResultSetHeader } from "mysql2";
-import { findSiblingDirectoryByName } from "./directory-sibling-uniqueness";
-import { directoryNameAndSlug } from "../../utils/directorySlug";
+import { directoryImportNameAndSlug } from "../../utils/directorySlug";
 import {
   formatPublicDisplayName,
   obsidianOrderFromSegment,
@@ -10,6 +9,7 @@ import {
   buildPathSlugFromArchivePath,
   fileStemFromArchivePath,
 } from "../../utils/pathSlug";
+import type { WikilinkResolution } from "../../types/wikilink";
 import {
   buildImportBatchWikilinkLookup,
   mergeWikilinkSlugsIntoBody,
@@ -32,6 +32,8 @@ export type ImportBatchOptions = {
   wikilinkTargetSlugs: string[];
   /** AI 或逐篇采纳：仅写入对应 path 的正文 */
   wikilinkSlugsByPath?: Record<string, string[]>;
+  /** 歧义消歧结果（含 source_path 定位导入文件） */
+  wikilinkResolutions?: WikilinkResolution[];
 };
 
 export type ImportBatchOutcome = {
@@ -80,7 +82,8 @@ export async function findTopLevelDirectoryConflicts(
 
   const conflicts: TopLevelDirConflict[] = [];
   for (const importName of names) {
-    const { name: importDirName, slug } = directoryNameAndSlug(importName);
+    const { slug } = directoryImportNameAndSlug(importName);
+    const importDirName = formatPublicDisplayName(importName, importName);
     const hit = bySlug.get(slug.toLowerCase());
     if (hit) conflicts.push({ importName: importDirName, existingName: hit.name });
   }
@@ -174,8 +177,8 @@ async function ensureDirectoryPath(
   let pathKey = parentId == null ? "@root" : `@${parentId}`;
 
   for (const seg of segments) {
-    const { name, slug } = directoryNameAndSlug(seg);
-    pathKey = `${pathKey}/${name}`;
+    const { name, slug } = directoryImportNameAndSlug(seg);
+    pathKey = `${pathKey}/${slug}`;
 
     const cached = cache.get(pathKey);
     if (cached != null) {
@@ -185,12 +188,6 @@ async function ensureDirectoryPath(
 
     let dirId = await findDirectoryUnderParent(conn, currentParent, slug);
     if (dirId == null) {
-      const nameConflict = await findSiblingDirectoryByName(conn, currentParent, name);
-      if (nameConflict) {
-        throw new Error(
-          `目录「${name}」在同一父级下已存在，请调整压缩包路径或先合并目录`,
-        );
-      }
       const sortOrder = obsidianOrderFromSegment(seg);
       const [res] = await conn.query<ResultSetHeader>(
         "INSERT INTO directories (parent_id, name, slug, sort_order) VALUES (?, ?, ?, ?)",
@@ -242,6 +239,7 @@ export async function runImportBatch(
     body: string;
     stem: string;
     directory_id: number | null;
+    path: string;
   }[] = [];
 
   for (const file of files) {
@@ -288,16 +286,26 @@ export async function runImportBatch(
     );
 
     const postId = res.insertId;
-    imported.push({ id: postId, slug, title, body, stem, directory_id: directoryId });
+    imported.push({
+      id: postId,
+      slug,
+      title,
+      body,
+      stem,
+      directory_id: directoryId,
+      path,
+    });
     post_slugs.push(slug);
   }
 
   const batchLookup = buildImportBatchWikilinkLookup(imported);
 
   for (const row of imported) {
-    // 边表仅来自该篇正文（含用户勾选后 merge 进正文的 [[slug]]），勿把全局 slug 列表注入每一篇
     const syncResult = await syncPostWikilinks(conn, row.id, row.body, [], {
       batchLookup,
+      resolutions: options.wikilinkResolutions,
+      sourcePath: row.path,
+      blockOnAmbiguous: true,
     });
     if (syncResult.skipped && syncResult.skipReason === "no_table") {
       warnings.push(`《${row.title}》：未创建 post_wikilinks 表，双链边未写入`);

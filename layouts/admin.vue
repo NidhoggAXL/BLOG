@@ -4,9 +4,8 @@
       <aside class="admin-card admin-sidebar-card" aria-label="功能目录">
         <div class="sidebar-brand">
           <AuthLogoutButton
-            button-type="default"
+            variant="sidebar"
             :confirm="true"
-            class="brand-logout"
           />
         </div>
 
@@ -49,15 +48,29 @@
             </NuxtLink>
           </template>
         </nav>
+
+        <div class="sidebar-footer">
+          <button
+            type="button"
+            class="theme-btn"
+            :title="isDark ? '切换为亮色' : '切换为暗色'"
+            @click="toggleTheme"
+          >
+            <span class="theme-icon" aria-hidden="true">{{ isDark ? "☀" : "☾" }}</span>
+            <span>{{ isDark ? "亮色模式" : "暗色模式" }}</span>
+          </button>
+        </div>
       </aside>
 
       <div class="admin-main">
         <RouteLoadingOverlay />
         <header class="admin-card admin-toolbar-card" aria-label="功能按钮">
           <div class="toolbar-title">{{ title }}</div>
+          <div class="toolbar-center">
+            <DashboardWikilinkRebuildButton v-if="isDashboardPage" />
+          </div>
           <div class="toolbar-actions">
             <NuxtLink to="/" class="btn btn-ghost">查看站点</NuxtLink>
-            <ThemeToggle />
             <button
               type="button"
               class="btn btn-ghost"
@@ -92,6 +105,9 @@ useHead({
 const route = useRoute();
 const auth = useAuthStore();
 const importOpen = ref(false);
+const { toggleTheme, isDark } = useAppTheme();
+
+const isDashboardPage = computed(() => route.path === "/admin");
 
 onMounted(() => {
   if (!auth.checked) auth.fetchMe();
@@ -187,27 +203,11 @@ function isMenuActive(to: string) {
 }
 
 .sidebar-brand {
-  display: block;
   flex-shrink: 0;
-  min-height: auto;
-  height: auto;
-  padding: 12px var(--admin-card-pad);
-  box-sizing: border-box;
-  border-bottom: 1px solid var(--admin-border);
-}
-
-.brand-logout {
-  display: block;
-  width: 100%;
-}
-
-.brand-logout :deep(.auth-logout-btn) {
-  width: 100%;
-  min-height: 46px;
-  padding: 10px 14px;
-  border-radius: 10px;
+  display: flex;
   justify-content: center;
-  font-weight: 600;
+  padding: 14px 12px 12px;
+  border-bottom: 1px solid var(--admin-border);
 }
 
 .sidebar-nav {
@@ -287,17 +287,58 @@ function isMenuActive(to: string) {
   line-height: 1;
 }
 
+.sidebar-footer {
+  flex-shrink: 0;
+  padding: 14px 12px;
+  border-top: 1px solid var(--admin-border);
+}
+
+.theme-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.55rem 0.75rem;
+  border: 1px solid var(--admin-border);
+  border-radius: 8px;
+  background: var(--admin-body-bg);
+  color: var(--admin-muted);
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition:
+    background @transition-fast,
+    border-color @transition-fast,
+    color @transition-fast;
+
+  &:hover {
+    background: var(--admin-nav-hover);
+    border-color: var(--admin-muted);
+    color: var(--admin-text);
+  }
+}
+
+.theme-icon {
+  font-size: 1rem;
+  line-height: 1;
+}
+
 .muted {
   color: var(--admin-muted);
 }
 
 .toolbar-title {
+  justify-self: start;
   font-size: 16px;
   font-weight: 600;
   letter-spacing: 0.02em;
 }
 
+.toolbar-center {
+  justify-self: center;
+}
+
 .toolbar-actions {
+  justify-self: end;
   display: flex;
   align-items: center;
   flex-wrap: wrap;

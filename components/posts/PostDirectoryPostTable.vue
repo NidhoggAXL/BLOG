@@ -150,7 +150,7 @@ defineExpose({ clearSelection })
       </el-table-column>
       <el-table-column
         prop="slug"
-        label="slug"
+        label="Slug（URL 路径）"
         :min-width="COL_MIN_WIDTH"
         align="center"
         header-align="center"

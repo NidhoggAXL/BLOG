@@ -1,10 +1,10 @@
 import type { ResultSetHeader } from 'mysql2'
 import { directoryDuplicateEntryMessage } from '../../utils/directory-db-errors'
+import { assertDirectorySiblingSlugAvailable } from '../../utils/directory-sibling-uniqueness'
 import {
-  assertDirectorySiblingNameAvailable,
-  assertDirectorySiblingSlugAvailable,
-} from '../../utils/directory-sibling-uniqueness'
-import { directoryNameAndSlug } from '../../../utils/directorySlug'
+  manualDirectoryNameAndSlug,
+  manualDirectoryNameValidationError,
+} from '../../../utils/directorySlug'
 import { normalizeManualSortOrder } from '../../../utils/sortOrder'
 import { getDescendantIdsIncludingSelf } from '../../utils/directory-ancestors'
 import type { DirectoryRow } from '../../../types/directory'
@@ -15,6 +15,14 @@ function normalizeParentId(raw: unknown): number | null {
   if (!Number.isFinite(n) || n < 0) return null
   if (n === 0) return null
   return n
+}
+
+/** 手动目录（slug 与 name 相同）重命名时同步 slug；导入目录仅改展示名 */
+function resolvePatchDirectorySlug(cur: DirectoryRow, rawName: string): string {
+  if (cur.slug === cur.name) {
+    return manualDirectoryNameAndSlug(rawName).slug
+  }
+  return cur.slug
 }
 
 export default defineEventHandler(async (event) => {
@@ -50,7 +58,13 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, message: '目录名称不能为空' })
   }
 
-  const { name, slug } = directoryNameAndSlug(rawName)
+  const prefixErr = manualDirectoryNameValidationError(rawName)
+  if (prefixErr) {
+    throw createError({ statusCode: 400, message: prefixErr })
+  }
+
+  const name = manualDirectoryNameAndSlug(rawName).name
+  const slug = resolvePatchDirectorySlug(cur, rawName)
 
   const sortOrder =
     body.sort_order !== undefined
@@ -73,7 +87,6 @@ export default defineEventHandler(async (event) => {
     }
   }
 
-  await assertDirectorySiblingNameAvailable(pool, nextParent, name, id)
   await assertDirectorySiblingSlugAvailable(pool, nextParent, slug, id)
 
   try {

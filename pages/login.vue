@@ -94,9 +94,10 @@ async function onSubmit() {
 <template>
   <div class="login-page">
     <RouteLoadingOverlay :show="submitting" label="正在登录" />
-    <div class="login-page__backdrop" aria-hidden="true">
-      <div class="login-page__bg" />
+    <div class="login-page__theme">
+      <ThemeToggle />
     </div>
+    <div class="login-page__backdrop" aria-hidden="true" />
 
     <div class="login-shell">
       <div class="login-panel">

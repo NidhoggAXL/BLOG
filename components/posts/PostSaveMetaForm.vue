@@ -11,6 +11,7 @@ import {
   enrichWikilinkParseRows,
   type WikilinkParseTableRow,
 } from '~/utils/wikilinkParseDisplay'
+import type { PostAlias } from '~/types/post-alias'
 
 const props = withDefaults(
   defineProps<{
@@ -22,6 +23,9 @@ const props = withDefaults(
     initialDirectoryId?: number
     initialStatus?: 'draft' | 'published' | 'archived'
     initialWikilinkSlugs?: string[]
+    /** 编辑已存文章时传入，用于别名管理 */
+    postSlug?: string
+    initialAliases?: PostAlias[]
   }>(),
   { flatDirs: () => [] },
 )
@@ -137,7 +141,12 @@ function buildPayload():
   }
 }
 
-defineExpose({ buildPayload, refreshWikilinkAutoParse, mergeWikilinkSlugs })
+defineExpose({
+  buildPayload,
+  refreshWikilinkAutoParse,
+  mergeWikilinkSlugs,
+  getWikilinkParseRows: () => wikilinkParseRows.value,
+})
 </script>
 
 <template>
@@ -216,6 +225,7 @@ defineExpose({ buildPayload, refreshWikilinkAutoParse, mergeWikilinkSlugs })
         collapse-tags-tooltip
         placeholder="搜索并多选要链接的文章；也可在正文中写 [[slug]]"
         class="post-save-meta-form__wikilink-select"
+        popper-class="post-save-meta-form-wikilink-popper"
       >
         <el-option
           v-for="o in linkOptions"
@@ -231,6 +241,13 @@ defineExpose({ buildPayload, refreshWikilinkAutoParse, mergeWikilinkSlugs })
           </div>
         </el-option>
       </el-select>
+    </el-form-item>
+
+    <el-form-item v-if="postSlug" label="Wikilink 别名">
+      <PostAliasManager
+        :post-slug="postSlug"
+        :initial-aliases="initialAliases"
+      />
     </el-form-item>
   </el-form>
 </template>
@@ -282,22 +299,35 @@ defineExpose({ buildPayload, refreshWikilinkAutoParse, mergeWikilinkSlugs })
 .post-save-meta-form__link-opt {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  line-height: 1.35;
+  gap: 6px;
+  line-height: 1.45;
   max-width: 100%;
+  padding: 2px 0;
 }
 
 .post-save-meta-form__link-opt-title {
   font-weight: 600;
   font-size: 14px;
+  line-height: 1.45;
 }
 
 .post-save-meta-form__link-opt-path {
   font-size: 12px;
+  line-height: 1.4;
   color: var(--admin-muted);
   opacity: 0.85;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+</style>
+
+<style lang="less">
+/* 下拉层 teleport 到 body，需非 scoped */
+.post-save-meta-form-wikilink-popper.el-select-dropdown .el-select-dropdown__item {
+  height: auto;
+  min-height: 44px;
+  padding: 10px 20px;
+  line-height: 1.45;
 }
 </style>

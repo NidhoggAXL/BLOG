@@ -22,6 +22,7 @@ import {
   D3_FORCE_CALIBRATION,
   GRAPH_SETTLE_PHYSICS,
   centerPullFromUi,
+  graphForceBudget,
   linkPullFromUi,
   repelDistanceMax,
   repelManyBodyFromUi,
@@ -45,18 +46,20 @@ function createManyBodyForce(
   nodeCount: number,
   linkDistance: number,
 ) {
+  const budget = graphForceBudget(nodeCount);
   return forceManyBody<GraphSimNode>()
     .strength(repelManyBodyFromUi(repelStrength))
     .distanceMin(8)
     .distanceMax(repelDistanceMax(width, height, nodeCount, linkDistance))
-    .theta(0.82);
+    .theta(budget.theta);
 }
 
-function createCollideForce() {
+function createCollideForce(nodeCount: number) {
+  const budget = graphForceBudget(nodeCount);
   return forceCollide<GraphSimNode>()
     .radius(collideRadius)
     .strength(D3_FORCE_CALIBRATION.collideStrength)
-    .iterations(3);
+    .iterations(budget.collideIterations);
 }
 
 /** 将 API 节点转为模拟节点并赋初值（向日葵式微扰，靠近中心） */
@@ -110,20 +113,23 @@ export function createGraphSimulation(
   const cx = width / 2;
   const cy = height / 2;
 
+  const nodeCount = nodes.length;
+  const budget = graphForceBudget(nodeCount);
+
   const linkForce = forceLink<GraphSimNode, GraphSimLink>(links)
     .id((d) => d.id)
     .distance(settings.linkDistance)
     .strength(linkPullFromUi(settings.linkStrength))
-    .iterations(D3_FORCE_CALIBRATION.linkIterations);
+    .iterations(budget.linkIterations);
 
   const chargeForce = createManyBodyForce(
     settings.repelStrength,
     width,
     height,
-    nodes.length,
+    nodeCount,
     settings.linkDistance,
   );
-  const collideForce = createCollideForce();
+  const collideForce = createCollideForce(nodeCount);
 
   const simulation = forceSimulation<GraphSimNode>(nodes)
     .force("link", linkForce)
@@ -142,13 +148,15 @@ export function createGraphSimulation(
 function applyCollideStrength(
   simulation: Simulation<GraphSimNode, GraphSimLink>,
   strength: number,
+  nodeCount: number,
 ) {
+  const budget = graphForceBudget(nodeCount);
   const collide = simulation.force("collide");
   if (collide && "radius" in collide) {
     (collide as ReturnType<typeof forceCollide<GraphSimNode>>)
       .radius(collideRadius)
       .strength(strength)
-      .iterations(3);
+      .iterations(budget.collideIterations);
   }
 }
 
@@ -175,15 +183,16 @@ export function applyGraphForces(
   const dragScale = dragMode ? dragForceScaleForMode(dragMode) : null;
   const centerBoost = settling ? GRAPH_SETTLE_PHYSICS.centerBoost : 1;
 
+  const nodeCount = simulation.nodes().length;
+  const budget = graphForceBudget(nodeCount);
+
   const link = simulation.force("link");
   if (link && "distance" in link) {
     const lf = link as ReturnType<typeof forceLink<GraphSimNode, GraphSimLink>>;
     lf.distance(effective.linkDistance)
       .strength(linkPullFromUi(effective.linkStrength))
-      .iterations(D3_FORCE_CALIBRATION.linkIterations);
+      .iterations(budget.linkIterations);
   }
-
-  const nodeCount = simulation.nodes().length;
   const charge = simulation.force("charge");
   if (charge && "strength" in charge) {
     (charge as ReturnType<typeof forceManyBody<GraphSimNode>>)
@@ -201,6 +210,7 @@ export function applyGraphForces(
     dragScale
       ? D3_FORCE_CALIBRATION.collideStrength * dragScale.collideStrength
       : D3_FORCE_CALIBRATION.collideStrength,
+    nodeCount,
   );
 
   if (settling) {

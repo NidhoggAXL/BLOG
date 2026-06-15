@@ -9,7 +9,11 @@ import {
   buildImportDirPreviewTopLevel,
 } from '~/composables/parseImportArchive'
 import type { WikilinkParseLink } from '~/types/wikilink'
+import type { WikilinkResolution } from '~/types/wikilink'
 import type { ImportBatchResult } from '~/types/import'
+import {
+  collectAmbiguousWikilinkRows,
+} from '~/utils/wikilinkAmbiguity'
 import {
   enrichWikilinkParseRows,
   type WikilinkParseTableRow,
@@ -24,6 +28,7 @@ import { fetchErrorMessage } from '~/utils/fetchErrorMessage'
 import { collectResolvedWikilinkSlugs } from '~/utils/collectResolvedWikilinkSlugs'
 import { buildPathSlugFromArchivePath } from '~/utils/pathSlug'
 import PostWikilinkParseTable from '~/components/posts/PostWikilinkParseTable.vue'
+import WikilinkAmbiguityDialog from '~/components/posts/WikilinkAmbiguityDialog.vue'
 import PostAiLinkRecommendPanel from '~/components/posts/PostAiLinkRecommendPanel.vue'
 
 const props = defineProps<{
@@ -65,6 +70,8 @@ const importing = ref(false)
 const wikilinkRows = ref<WikilinkParseTableRow[]>([])
 const wikilinkParseTried = ref(false)
 const wikilinkParseError = ref<string | null>(null)
+const ambiguityVisible = ref(false)
+const pendingResolutions = ref<WikilinkResolution[]>([])
 
 const runtimeConfig = useRuntimeConfig()
 const aiEnabled = computed(() => runtimeConfig.public.aiEnabled !== false)
@@ -250,6 +257,7 @@ async function parseAllWikilinks(options?: {
       stem: z.fileName.replace(/\.(md|markdown|mdown|mkd)$/i, '').trim(),
     }))
     for (const f of importFiles.value) {
+      const normalizedPath = f.path.replace(/\\/g, '/').replace(/^\/+/, '').replace(/\/+/g, '/')
       const res = await $fetch<{ links: WikilinkParseLink[] }>(
         '/api/wikilinks/parse',
         {
@@ -261,7 +269,7 @@ async function parseAllWikilinks(options?: {
         },
       )
       for (const link of res.links) {
-        merged.push({ ...link, source_path: f.path })
+        merged.push({ ...link, source_path: normalizedPath })
       }
     }
     wikilinkRows.value = enrichWikilinkParseRows(merged, linkOptions.value)
@@ -289,7 +297,7 @@ async function parseAllWikilinks(options?: {
   }
 }
 
-async function submitBatch() {
+async function submitBatch(wikilinkResolutions: WikilinkResolution[] = []) {
   if (!importFiles.value.length) return
   if (batchOverLimit.value) {
     ElMessage.warning(
@@ -329,6 +337,7 @@ async function submitBatch() {
         status: status.value,
         wikilink_target_slugs: wikilinkSlugs.value,
         wikilink_slugs_by_path: wikilinkSlugsByPath,
+        wikilink_resolutions: wikilinkResolutions,
         files: importFiles.value.map((f) => ({
           path: f.path,
           title: f.title,
@@ -347,24 +356,67 @@ async function submitBatch() {
     ElMessage.success(
       `导入完成：新建 ${res.posts_created} 篇文章、${res.directories_created} 个目录`,
     )
+
+    const hasResyncHint = (res.warnings ?? []).some((w) =>
+      w.includes('重新保存'),
+    )
+    if (hasResyncHint) {
+      try {
+        await ElMessageBox.confirm(
+          '导入已完成。库内若有老文章引用了新笔记，其双链边表可能尚未更新。是否立即全库重建双链边表？',
+          '同步双链边表',
+          {
+            confirmButtonText: '全库重建',
+            cancelButtonText: '稍后处理',
+            type: 'info',
+          },
+        )
+        await $fetch('/api/wikilinks/rebuild', {
+          method: 'POST',
+          body: { all: true },
+        })
+        ElMessage.success('全库双链边表已重建')
+      } catch {
+        /* 用户取消或重建失败：不阻断导入完成流程 */
+      }
+    }
+
     emit('done', res)
   } catch (e: unknown) {
-    const err = e as { statusCode?: number }
-    const msg = fetchErrorMessage(e, '导入失败')
-    if (
-      err?.statusCode === 409 &&
-      msg.includes(IMPORT_TOP_DIR_CONFLICT_MESSAGE)
-    ) {
-      await ElMessageBox.alert(msg, '目录冲突', {
-        type: 'warning',
-        confirmButtonText: '知道了',
-      })
-    } else {
-      ElMessage.error(msg)
+    const err = e as {
+      statusCode?: number
+      data?: { statusMessage?: string }
+      message?: string
     }
+    if (err.statusCode === 409) {
+      await parseAllWikilinks({ silent: true })
+      const ambiguous = collectAmbiguousWikilinkRows(wikilinkRows.value)
+      if (ambiguous.length) {
+        ambiguityVisible.value = true
+        return
+      }
+    }
+    ElMessage.error(fetchErrorMessage(e, '导入失败'))
   } finally {
     importing.value = false
   }
+}
+
+async function onImportClick() {
+  if (autoParseWikilinks.value && !wikilinkRows.value.length) {
+    await parseAllWikilinks({ silent: true })
+  }
+  const ambiguous = collectAmbiguousWikilinkRows(wikilinkRows.value)
+  if (ambiguous.length) {
+    ambiguityVisible.value = true
+    return
+  }
+  await submitBatch()
+}
+
+function onAmbiguityConfirm(resolutions: WikilinkResolution[]) {
+  pendingResolutions.value = resolutions
+  void submitBatch(resolutions)
 }
 </script>
 
@@ -391,7 +443,7 @@ async function submitBatch() {
             metaLoading
           "
           :icon="FolderOpened"
-          @click="submitBatch"
+          @click="onImportClick"
         >
           开始导入
         </el-button>
@@ -618,6 +670,12 @@ async function submitBatch() {
         </aside>
       </div>
     </div>
+
+    <WikilinkAmbiguityDialog
+      v-model:visible="ambiguityVisible"
+      :rows="wikilinkRows"
+      @confirm="onAmbiguityConfirm"
+    />
   </div>
 </template>
 

@@ -4,6 +4,8 @@ import {
   findTopLevelDirectoryConflicts,
   runImportBatch,
 } from "../../utils/import-batch";
+import { normalizeWikilinkResolutions } from "../../../utils/normalizeWikilinkResolutions";
+import { rethrowIfWikilinkAmbiguous } from "../../utils/wikilink-sync-error";
 
 function normalizeDirectoryId(raw: unknown): number | null {
   if (raw === undefined || raw === null || raw === "") return null;
@@ -57,6 +59,7 @@ export default defineEventHandler(async (event) => {
     status?: string;
     wikilink_target_slugs?: string[];
     wikilink_slugs_by_path?: Record<string, string[]>;
+    wikilink_resolutions?: unknown;
     files?: ImportBatchFileInput[];
   }>(event);
 
@@ -89,6 +92,9 @@ export default defineEventHandler(async (event) => {
   const wikilinkTargetSlugs = Array.isArray(body.wikilink_target_slugs)
     ? body.wikilink_target_slugs.map(String)
     : [];
+  const wikilinkResolutions = normalizeWikilinkResolutions(
+    body.wikilink_resolutions,
+  );
   const wikilinkSlugsByPath = normalizeWikilinkSlugsByPath(
     body.wikilink_slugs_by_path,
     files.map((f) => f.path),
@@ -130,8 +136,21 @@ export default defineEventHandler(async (event) => {
       status,
       wikilinkTargetSlugs,
       wikilinkSlugsByPath,
+      wikilinkResolutions,
     });
     await conn.commit();
+
+    const hasWikilinks = files.some(
+      (f) =>
+        /\[\[[^\]\n]+\]\]/.test(f.body) || /!\[\[[^\]\n]+\]\]/.test(f.body),
+    );
+    if (result.posts_created > 0 && hasWikilinks) {
+      result.warnings.push(
+        "若库内已有文章引用了本次导入的笔记，请重新保存那些文章以更新双链边表。",
+      );
+      result.warnings = [...new Set(result.warnings)];
+    }
+
     return result;
   } catch (e: unknown) {
     await conn.rollback();
@@ -143,6 +162,7 @@ export default defineEventHandler(async (event) => {
       sqlMessage?: string;
     };
     if (err.statusCode) throw e;
+    rethrowIfWikilinkAmbiguous(e);
     if (err.code === "ER_DUP_ENTRY" || err.errno === 1062) {
       throw createError({
         statusCode: 409,

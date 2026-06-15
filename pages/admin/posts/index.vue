@@ -30,11 +30,10 @@ import {
   filterPostsAdminNavTree,
   findPostsAdminNavNode,
   firstPostsAdminNavNode,
-  isRealDirectoryNavId,
   postsForNavSelection,
-  subtreeCountForNav,
   type PostsAdminNavNode,
 } from "~/utils/postsAdminNav";
+import { isRealDirectoryNavId } from "~/utils/isRealDirectoryNavId";
 
 definePageMeta({
   layout: "admin",
@@ -135,13 +134,39 @@ const panelTitle = computed(() => {
 });
 
 const panelSubtitle = computed(() => {
-  if (!selectedNav.value) return "";
+  const nav = selectedNav.value;
+  if (!nav) return "";
   if (searchActive.value) {
-    return selectedNav.value.kind === "all"
-      ? "在全库中匹配标题、slug 或状态"
-      : selectedNav.value.pathLabel;
+    if (nav.kind === "all") {
+      return "在全库中匹配标题、slug 或状态";
+    }
+    if (nav.kind === "folder" && nav.pathLabel !== nav.name) {
+      return nav.pathLabel;
+    }
+    return "";
   }
-  return selectedNav.value.pathLabel;
+  if (nav.kind === "folder" && nav.pathLabel !== nav.name) {
+    return nav.pathLabel;
+  }
+  return "";
+});
+
+const listArticleCount = computed(() => {
+  if (searchActive.value) return displayPosts.value.length;
+  const nav = selectedNav.value;
+  if (!nav) return 0;
+  return nav.postCount;
+});
+
+const listChildDirCount = computed(() => {
+  const nav = selectedNav.value;
+  if (!nav || nav.kind !== "folder") return 0;
+  return nav.children.length;
+});
+
+const listStatusLabel = computed(() => {
+  if (statusFilter.value === "all") return "";
+  return STATUS_OPTIONS.find((o) => o.value === statusFilter.value)?.label ?? "";
 });
 
 const tableEmptyText = computed(() => {
@@ -507,29 +532,28 @@ onMounted(() => {
 
       <section class="admin-card admin-card--pad admin-module-page__list">
         <div class="admin-module-page__list-head">
-          <h2 class="admin-module-page__list-title">{{ panelTitle }}</h2>
-          <p v-if="panelSubtitle" class="admin-module-page__list-path">
-            {{ panelSubtitle }}
-          </p>
-          <div class="admin-module-page__list-tags">
-            <code
-              v-if="selectedNav && selectedNav.kind === 'folder'"
-              class="admin-module-page__list-slug"
-            >
-              {{ selectedNav.slug }}
-            </code>
-            <el-tag size="small" type="info">
-              {{ displayPosts.length }} 篇
-              <template v-if="statusFilter !== 'all'">
-                · {{ STATUS_OPTIONS.find((o) => o.value === statusFilter)?.label }}
-              </template>
-            </el-tag>
-            <el-tag
-              v-if="selectedNav && selectedNav.kind === 'folder'"
-              size="small"
-            >
-              含子级 {{ subtreeCountForNav(selectedDirectoryId, postsByStatus, dirList) }} 篇
-            </el-tag>
+          <div class="admin-module-page__list-head-row">
+            <h2 class="admin-module-page__list-title">{{ panelTitle }}</h2>
+            <span v-if="panelSubtitle" class="admin-module-page__list-path">
+              {{ panelSubtitle }}
+            </span>
+            <div class="admin-module-page__list-meta">
+              <span
+                v-if="selectedNav?.kind === 'folder'"
+                class="admin-module-page__list-meta-item"
+              >
+                Slug：<code class="admin-module-page__list-slug">{{ selectedNav.slug }}</code>
+              </span>
+              <span class="admin-module-page__list-meta-item">
+                含文章 {{ listArticleCount }} 篇<template v-if="listStatusLabel">（{{ listStatusLabel }}）</template>
+              </span>
+              <span
+                v-if="selectedNav?.kind === 'folder'"
+                class="admin-module-page__list-meta-item"
+              >
+                子目录 {{ listChildDirCount }} 个
+              </span>
+            </div>
           </div>
         </div>
 

@@ -1,15 +1,19 @@
 <script setup lang="ts">
 import { ArrowLeft, DocumentChecked } from '@element-plus/icons-vue'
+import PostComposeEditorSkeleton from '~/components/posts/PostComposeEditorSkeleton.vue'
 
-const PostImmersiveMdEditor = defineAsyncComponent(
-  () => import('~/components/posts/PostImmersiveMdEditor.vue'),
-)
+const PostImmersiveMdEditor = defineAsyncComponent({
+  loader: () => import('~/components/posts/PostImmersiveMdEditor.vue'),
+  loadingComponent: PostComposeEditorSkeleton,
+  delay: 0,
+})
 
 const route = useRoute()
 const router = useRouter()
 const slug = computed(() => String(route.params.slug ?? ''))
 
 const { treeSelectData, linkOptions, loading: loadingMeta, loadMeta } = usePostCreateMeta()
+const { startTask, stopTask } = useRouteLoading()
 
 const loadingPost = ref(true)
 const loadError = ref<string | null>(null)
@@ -26,7 +30,11 @@ const metaSnapshot = ref({
 })
 
 const pageTitle = computed(() =>
-  metaSnapshot.value.title ? `编辑 · ${metaSnapshot.value.title}` : '编辑文章',
+  loadingPost.value && !metaSnapshot.value.title
+    ? '加载中…'
+    : metaSnapshot.value.title
+      ? `编辑 · ${metaSnapshot.value.title}`
+      : '编辑文章',
 )
 
 const excludeSlugs = computed(() =>
@@ -34,8 +42,16 @@ const excludeSlugs = computed(() =>
 )
 
 const dirty = ref(false)
+const bootLoading = computed(() => loadingPost.value || loadingMeta.value)
 
 const postCache = usePostCacheStore()
+let bootStopped = false
+
+function finishBootLoading() {
+  if (bootStopped) return
+  bootStopped = true
+  stopTask()
+}
 
 async function loadPost(force = false) {
   loadingPost.value = true
@@ -60,10 +76,25 @@ async function loadPost(force = false) {
   }
 }
 
+if (import.meta.client) {
+  startTask()
+}
+
 onMounted(async () => {
   await loadMeta().catch(() => {})
   await loadPost()
+  if (loadError.value) {
+    finishBootLoading()
+  }
 })
+
+onBeforeUnmount(() => {
+  finishBootLoading()
+})
+
+function onEditorReady() {
+  finishBootLoading()
+}
 
 watch(body, () => {
   if (!loadingPost.value) dirty.value = true
@@ -125,7 +156,7 @@ if (import.meta.client) {
         <el-button
           type="primary"
           :icon="DocumentChecked"
-          :loading="loadingMeta || loadingPost"
+          :loading="bootLoading"
           :disabled="Boolean(loadError)"
           @click="goToSavePage"
         >
@@ -142,7 +173,10 @@ if (import.meta.client) {
       class="post-compose__alert"
     />
 
-    <el-skeleton v-else-if="loadingPost" class="post-compose__skeleton" :rows="4" animated />
+    <PostComposeEditorSkeleton
+      v-else-if="bootLoading"
+      label="正在加载文章…"
+    />
 
     <main v-else class="post-compose-page__main">
       <div class="post-compose-page__stage">
@@ -150,6 +184,7 @@ if (import.meta.client) {
           v-model="body"
           :link-options="linkOptions"
           :exclude-slugs="excludeSlugs"
+          @ready="onEditorReady"
         />
       </div>
     </main>
@@ -169,9 +204,5 @@ if (import.meta.client) {
 
 .post-compose__alert {
   margin: 0 0 12px;
-}
-
-.post-compose__skeleton {
-  padding: 24px;
 }
 </style>

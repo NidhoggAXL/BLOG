@@ -1,4 +1,8 @@
 import type { PoolConnection } from "mysql2/promise";
+import type { WikilinkResolution } from "../../types/wikilink";
+import {
+  wikilinkResolutionMatchesParsed,
+} from "../../types/wikilink";
 import {
   expandWikilinkSlugLookups,
   maskMarkdownForWikilinkScan,
@@ -50,6 +54,26 @@ export function parseWikilinksFromBody(markdown: string): ParsedWikilink[] {
 }
 
 type ResolvedPost = { id: number; slug: string; title: string };
+
+export type WikilinkUnresolvedEdge = {
+  position: number;
+  raw_target: string;
+  source_path?: string;
+};
+
+/** 存在未消歧双链时抛出（HTTP 409） */
+export class WikilinkAmbiguousUnresolvedError extends Error {
+  readonly statusCode = 409;
+  readonly unresolved: WikilinkUnresolvedEdge[];
+
+  constructor(unresolved: WikilinkUnresolvedEdge[]) {
+    super(
+      `存在 ${unresolved.length} 处未消歧的双链，请为歧义边选择目标文章后重试`,
+    );
+    this.name = "WikilinkAmbiguousUnresolvedError";
+    this.unresolved = unresolved;
+  }
+}
 
 export type WikilinkResolveResult =
   | { status: "ok"; post: ResolvedPost }
@@ -264,7 +288,31 @@ export type WikilinkResolvedPreview = ParsedWikilink & {
   target_id?: number;
   target_slug?: string;
   target_title?: string;
+  ambiguous_candidates?: ResolvedPost[];
 };
+
+async function fetchPostById(
+  executor: { query: PoolConnection["query"] },
+  postId: number,
+): Promise<ResolvedPost | null> {
+  const [rows] = await executor.query(
+    "SELECT id, slug, title FROM posts WHERE id = ? LIMIT 1",
+    [postId],
+  );
+  return (rows as ResolvedPost[])[0] ?? null;
+}
+
+function findResolutionForRow(
+  row: ParsedWikilink,
+  resolutions: WikilinkResolution[] | undefined,
+  sourcePath?: string,
+): WikilinkResolution | undefined {
+  if (!resolutions?.length) return undefined;
+  const scope = sourcePath ? { source_path: sourcePath } : undefined;
+  return resolutions.find((r) =>
+    wikilinkResolutionMatchesParsed(r, row, scope),
+  );
+}
 
 export async function resolveParsedWikilinksForPreview(
   executor: { query: PoolConnection["query"] },
@@ -285,6 +333,7 @@ export async function resolveParsedWikilinksForPreview(
         ...row,
         resolve_status: "ambiguous",
         target_slug: resolved.posts.map((x) => x.slug).join(", "),
+        ambiguous_candidates: resolved.posts,
       });
     } else {
       const t = resolved.post;
@@ -338,6 +387,18 @@ function mergeExplicitSlugsIntoParsed(
   return out;
 }
 
+export type SyncPostWikilinksOptions = Pick<
+  WikilinkResolveOptions,
+  "batchLookup"
+> & {
+  /** 用户消歧结果；ambiguous 时优先采用 */
+  resolutions?: WikilinkResolution[];
+  /** 批量导入时：当前源文件的 path，用于过滤 resolutions */
+  sourcePath?: string;
+  /** 为 true 时 ambiguous 且无 override 则抛 WikilinkAmbiguousUnresolvedError */
+  blockOnAmbiguous?: boolean;
+};
+
 export type SyncPostWikilinksResult = {
   inserted: number;
   skipped: boolean;
@@ -350,7 +411,7 @@ export async function syncPostWikilinks(
   sourcePostId: number,
   body: string,
   explicitTargetSlugs: string[] = [],
-  options?: Pick<WikilinkResolveOptions, "batchLookup">,
+  options?: SyncPostWikilinksOptions,
 ): Promise<SyncPostWikilinksResult> {
   if (!(await wikilinkTableExists(conn))) {
     return { inserted: 0, skipped: true, skipReason: "no_table" };
@@ -373,24 +434,58 @@ export async function syncPostWikilinks(
   const sourceDirectoryId =
     (srcRows as { directory_id: number | null }[])[0]?.directory_id ?? null;
 
+  const blockOnAmbiguous = options?.blockOnAmbiguous !== false;
+  const unresolved: WikilinkUnresolvedEdge[] = [];
+
   for (const row of parsed) {
-    const resolved = await resolveWikilinkLookup(conn, row.slug_lookup, {
-      maxCandidates: 2,
-      batchLookup: options?.batchLookup,
-      sourceDirectoryId,
-    });
+    const resolution = findResolutionForRow(
+      row,
+      options?.resolutions,
+      options?.sourcePath,
+    );
+
     let targetId: number | null = null;
     let resolve_status: "ok" | "missing_target" | "ambiguous" | "self_loop" =
       "ok";
-    if (resolved.status === "missing_target") {
-      resolve_status = "missing_target";
-    } else if (resolved.status === "ambiguous") {
-      resolve_status = "ambiguous";
-    } else {
-      targetId = resolved.post.id;
+
+    if (resolution) {
+      const forced = await fetchPostById(conn, resolution.chosen_post_id);
+      if (!forced) {
+        throw new Error(
+          `消歧目标文章不存在（id=${resolution.chosen_post_id}）`,
+        );
+      }
+      targetId = forced.id;
       if (targetId === sourcePostId) {
         resolve_status = "self_loop";
         targetId = null;
+      }
+    } else {
+      const resolved = await resolveWikilinkLookup(conn, row.slug_lookup, {
+        maxCandidates: 2,
+        batchLookup: options?.batchLookup,
+        sourceDirectoryId,
+      });
+      if (resolved.status === "missing_target") {
+        resolve_status = "missing_target";
+      } else if (resolved.status === "ambiguous") {
+        if (blockOnAmbiguous) {
+          unresolved.push({
+            position: row.position,
+            raw_target: row.raw_target,
+            ...(options?.sourcePath
+              ? { source_path: options.sourcePath }
+              : {}),
+          });
+          continue;
+        }
+        resolve_status = "ambiguous";
+      } else {
+        targetId = resolved.post.id;
+        if (targetId === sourcePostId) {
+          resolve_status = "self_loop";
+          targetId = null;
+        }
       }
     }
 
@@ -411,7 +506,36 @@ export async function syncPostWikilinks(
     );
   }
 
+  if (unresolved.length) {
+    throw new WikilinkAmbiguousUnresolvedError(unresolved);
+  }
+
   return { inserted: parsed.length, skipped: false };
+}
+
+/** 对指定文章按当前 body 重建出链（不修改 posts 表） */
+export async function rebuildPostWikilinksByIds(
+  conn: PoolConnection,
+  postIds: number[],
+  options?: { blockOnAmbiguous?: boolean },
+): Promise<{ rebuilt: number; edges: number }> {
+  let rebuilt = 0;
+  let edges = 0;
+  for (const postId of postIds) {
+    const [rows] = await conn.query(
+      "SELECT body FROM posts WHERE id = ? LIMIT 1",
+      [postId],
+    );
+    const body = (rows as { body: string }[])[0]?.body ?? "";
+    const result = await syncPostWikilinks(conn, postId, body, [], {
+      blockOnAmbiguous: options?.blockOnAmbiguous ?? false,
+    });
+    if (!result.skipped) {
+      rebuilt++;
+      edges += result.inserted;
+    }
+  }
+  return { rebuilt, edges };
 }
 
 export type WikilinkBacklinkRow = {

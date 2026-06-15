@@ -61,6 +61,35 @@ export const D3_FORCE_CALIBRATION = {
   repelDistanceLinkFactor: 2.35,
 } as const
 
+/** 按节点规模缩放模拟开销（大图降精度换流畅） */
+export function graphForceBudget(nodeCount: number) {
+  if (nodeCount <= 60) {
+    return {
+      linkIterations: D3_FORCE_CALIBRATION.linkIterations,
+      collideIterations: 3,
+      theta: 0.82,
+      warmupTicks: Math.min(72, Math.max(28, Math.round(28 + Math.sqrt(nodeCount) * 5))),
+      warmupBatch: 20,
+    }
+  }
+  if (nodeCount <= 150) {
+    return {
+      linkIterations: 3,
+      collideIterations: 2,
+      theta: 1.0,
+      warmupTicks: Math.min(56, Math.max(24, Math.round(24 + Math.sqrt(nodeCount) * 4))),
+      warmupBatch: 24,
+    }
+  }
+  return {
+    linkIterations: 2,
+    collideIterations: 2,
+    theta: 1.25,
+    warmupTicks: Math.min(40, Math.max(20, Math.round(20 + Math.sqrt(nodeCount) * 2.5))),
+    warmupBatch: 28,
+  }
+}
+
 export function centerPullFromUi(centerStrength: number): number {
   return Math.max(0, centerStrength) * D3_FORCE_CALIBRATION.centerPullScale
 }

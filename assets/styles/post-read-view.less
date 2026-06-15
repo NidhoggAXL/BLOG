@@ -355,6 +355,42 @@ html.dark .post-immersive-md-editor .compose-cm-live-editor .cm-content pre.shik
   min-height: 0;
 }
 
+.post-compose-page__main--boot,
+.post-compose-page__stage--boot {
+  flex: 1;
+  min-height: 0;
+}
+
+.post-compose-editor-boot {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-height: 320px;
+  padding: 24px;
+  box-sizing: border-box;
+  border: 1px solid var(--post-read-border, var(--admin-border));
+  border-radius: 14px;
+  background: var(--post-read-surface, var(--el-fill-color-blank));
+  box-shadow: var(--post-read-shadow, 0 8px 32px rgba(0, 0, 0, 0.06));
+}
+
+.post-compose-editor-boot__spinner {
+  width: 28px;
+  height: 28px;
+  border-width: 3px;
+}
+
+.post-compose-editor-boot__label {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--admin-muted);
+  letter-spacing: 0.02em;
+}
+
 /* Markdown 编辑卡片 */
 .post-immersive-md-editor .compose-panel-card--editor {
   .compose-cm-live-editor .cm-editor {

@@ -63,6 +63,19 @@ const tableMaxHeight = computed(() =>
           </el-tag>
         </template>
       </el-table-column>
+      <el-table-column
+        v-if="rows.some((r) => r.resolve_status === 'ambiguous')"
+        label="歧义候选"
+        min-width="160"
+        show-overflow-tooltip
+      >
+        <template #default="{ row }">
+          <template v-if="row.resolve_status === 'ambiguous' && row.ambiguous_candidates?.length">
+            {{ row.ambiguous_candidates.map((c) => c.title).join(' / ') }}
+          </template>
+          <span v-else class="wikilink-parse-table__muted">—</span>
+        </template>
+      </el-table-column>
       <el-table-column label="文章标题" min-width="110" show-overflow-tooltip>
         <template #default="{ row }">
           <template v-if="row.resolve_status === 'ok' && row.target_title">

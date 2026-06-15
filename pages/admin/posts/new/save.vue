@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { ArrowLeft, Check, EditPen } from '@element-plus/icons-vue'
+import type { WikilinkResolution } from '~/types/wikilink'
 import type PostSaveMetaForm from '~/components/posts/PostSaveMetaForm.vue'
+import WikilinkAmbiguityDialog from '~/components/posts/WikilinkAmbiguityDialog.vue'
+import { collectAmbiguousWikilinkRows } from '~/utils/wikilinkAmbiguity'
 
 definePageMeta({
   layout: 'post-compose',
@@ -19,6 +22,8 @@ const { treeSelectData, flatDirs, linkOptions, loading: loadingMeta, loadMeta } 
 const stash = ref<ReturnType<typeof consumeCreateSave>>(null)
 const stashReady = ref(false)
 const submitting = ref(false)
+const ambiguityVisible = ref(false)
+const ambiguityRows = ref<ReturnType<typeof collectAmbiguousWikilinkRows>>([])
 const metaFormRef = ref<InstanceType<typeof PostSaveMetaForm> | null>(null)
 const bodyMarkdown = ref('')
 
@@ -66,7 +71,7 @@ function onRecommendComplete(payload: { adoptedSlugs: string[] }) {
   }
 }
 
-async function onSave() {
+async function doSave(wikilinkResolutions: WikilinkResolution[] = []) {
   const payload = metaFormRef.value?.buildPayload()
   if (!payload || !stash.value) return
 
@@ -85,6 +90,7 @@ async function onSave() {
         status: payload.status,
         body: bodyMarkdown.value,
         wikilink_target_slugs: payload.wikilink_slugs,
+        wikilink_resolutions: wikilinkResolutions,
       },
     })
     clearDraft()
@@ -103,11 +109,43 @@ async function onSave() {
     }
     await navigateTo(`/admin/posts/${encodeURIComponent(res.slug)}`)
   } catch (e: unknown) {
-    const err = e as { data?: { statusMessage?: string }; message?: string }
+    const err = e as {
+      statusCode?: number
+      data?: { statusMessage?: string }
+      message?: string
+    }
+    if (err.statusCode === 409) {
+      await metaFormRef.value?.refreshWikilinkAutoParse()
+      const rows = metaFormRef.value?.getWikilinkParseRows() ?? []
+      ambiguityRows.value = collectAmbiguousWikilinkRows(rows)
+      if (ambiguityRows.value.length) {
+        ambiguityVisible.value = true
+        return
+      }
+    }
     ElMessage.error(err?.data?.statusMessage || err?.message || '保存失败')
   } finally {
     submitting.value = false
   }
+}
+
+async function onSave() {
+  const payload = metaFormRef.value?.buildPayload()
+  if (!payload || !stash.value) return
+
+  await metaFormRef.value?.refreshWikilinkAutoParse()
+  const rows = metaFormRef.value?.getWikilinkParseRows() ?? []
+  const ambiguous = collectAmbiguousWikilinkRows(rows)
+  if (ambiguous.length) {
+    ambiguityRows.value = ambiguous
+    ambiguityVisible.value = true
+    return
+  }
+  await doSave()
+}
+
+function onAmbiguityConfirm(resolutions: WikilinkResolution[]) {
+  void doSave(resolutions)
 }
 
 useHead(() => ({ title: pageTitle.value }))
@@ -176,6 +214,12 @@ useHead(() => ({ title: pageTitle.value }))
         </aside>
       </div>
     </main>
+
+    <PostsWikilinkAmbiguityDialog
+      v-model:visible="ambiguityVisible"
+      :rows="ambiguityRows"
+      @confirm="onAmbiguityConfirm"
+    />
   </div>
 </template>
 

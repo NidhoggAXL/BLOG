@@ -1,11 +1,7 @@
 import type { ResultSetHeader } from 'mysql2'
 import { directoryDuplicateEntryMessage } from '../../utils/directory-db-errors'
-import {
-  assertDirectorySiblingNameAvailable,
-  assertDirectorySiblingSlugAvailable,
-} from '../../utils/directory-sibling-uniqueness'
-import { directoryNameAndSlug } from '../../../utils/directorySlug'
-import { obsidianOrderFromSegment } from '../../../utils/obsidianDisplayPrefix'
+import { assertDirectorySiblingSlugAvailable } from '../../utils/directory-sibling-uniqueness'
+import { manualDirectoryNameAndSlug, manualDirectoryNameValidationError } from '../../../utils/directorySlug'
 import { normalizeManualSortOrder } from '../../../utils/sortOrder'
 
 function resolveDirectorySortOrder(
@@ -16,10 +12,10 @@ function resolveDirectorySortOrder(
   if (raw !== undefined) {
     const manual = normalizeManualSortOrder(raw)
     if (raw != null && manual != null) return manual
-    return obsidianOrderFromSegment(name)
+    return null
   }
   if (fallback !== undefined) return fallback
-  return obsidianOrderFromSegment(name)
+  return null
 }
 
 function normalizeParentId(raw: unknown): number | null {
@@ -50,14 +46,18 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, message: '目录名称不能为空' })
   }
 
+  const prefixErr = manualDirectoryNameValidationError(rawName)
+  if (prefixErr) {
+    throw createError({ statusCode: 400, message: prefixErr })
+  }
+
   const parentId = normalizeParentId(body.parent_id)
 
-  const { name, slug } = directoryNameAndSlug(rawName)
+  const { name, slug } = manualDirectoryNameAndSlug(rawName)
   const sortOrder = resolveDirectorySortOrder(body.sort_order, name)
 
   const pool = useMysqlPool()
 
-  await assertDirectorySiblingNameAvailable(pool, parentId, name)
   await assertDirectorySiblingSlugAvailable(pool, parentId, slug)
 
   try {

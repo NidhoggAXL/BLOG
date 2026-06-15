@@ -10,7 +10,6 @@ CREATE TABLE IF NOT EXISTS directories (
   created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
   updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
   PRIMARY KEY (id),
-  UNIQUE KEY uk_dir_parent_name (parent_id, name),
   UNIQUE KEY uk_dir_parent_slug (parent_id, slug),
   KEY idx_directories_parent_id (parent_id),
   CONSTRAINT fk_directories_parent

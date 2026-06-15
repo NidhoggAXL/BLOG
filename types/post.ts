@@ -15,6 +15,8 @@ export type PostWikilinkRef = {
   title: string
 }
 
+import type { PostAlias } from './post-alias'
+
 /** posts 详情 */
 export interface PostDetail extends PostListItem {
   body: string
@@ -24,6 +26,8 @@ export interface PostDetail extends PostListItem {
   created_at: string
   /** 编辑页回显：边表中已解析成功的出链目标 slug */
   wikilink_target_slugs?: string[]
+  /** Wikilink 备用匹配名（post_aliases，非 link_display） */
+  aliases?: PostAlias[]
   /** 指向本文的已发布文章（入链） */
   inbound_links?: PostWikilinkRef[]
   /** 本文指向的已发布文章（出链） */

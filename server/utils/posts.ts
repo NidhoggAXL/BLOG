@@ -2,6 +2,7 @@ import type { PublicPostDetail, PublicPostMeta } from "../../types/blog";
 import type { PostDetail, PostListItem } from "../../types/post";
 import { SQL_ORDER_BY_SORT_ORDER_ASC } from "../../utils/sortOrder";
 import { renderPostBodyHtmlForPool } from "./render-post-body-html";
+import { listPostAliases } from "./post-aliases";
 import { getExplicitOutboundSlugs, getPostWikilinkRefs } from "./wikilinks";
 
 type PostListRow = {
@@ -84,6 +85,7 @@ export async function getPostDetail(
     stripOrderPrefix?: boolean;
     includeWikilinkSlugs?: boolean;
     includeWikilinkRefs?: boolean;
+    includeAliases?: boolean;
   },
 ): Promise<PostDetail | null> {
   const publishedOnly = opts?.publishedOnly === true;
@@ -112,7 +114,12 @@ export async function getPostDetail(
   let wikilink_target_slugs: string[] | undefined;
   let inbound_links: { slug: string; title: string }[] | undefined;
   let outbound_links: { slug: string; title: string }[] | undefined;
-  if (opts?.includeWikilinkSlugs !== false || opts?.includeWikilinkRefs !== false) {
+  let aliases: PostDetail["aliases"];
+  if (
+    opts?.includeWikilinkSlugs !== false ||
+    opts?.includeWikilinkRefs !== false ||
+    opts?.includeAliases !== false
+  ) {
     const conn = await pool.getConnection();
     try {
       if (opts?.includeWikilinkSlugs !== false) {
@@ -125,12 +132,22 @@ export async function getPostDetail(
         inbound_links = refs.inbound;
         outbound_links = refs.outbound;
       }
+      if (opts?.includeAliases !== false) {
+        aliases = await listPostAliases(conn, row.id);
+      }
     } finally {
       conn.release();
     }
   }
 
-  return { ...row, body_html, wikilink_target_slugs, inbound_links, outbound_links };
+  return {
+    ...row,
+    body_html,
+    wikilink_target_slugs,
+    inbound_links,
+    outbound_links,
+    aliases,
+  };
 }
 
 export async function getPublicPostDetail(
@@ -144,6 +161,7 @@ export async function getPublicPostDetail(
     stripOrderPrefix: true,
     includeWikilinkSlugs: false,
     includeWikilinkRefs: true,
+    includeAliases: false,
   });
   if (!detail) return null;
 

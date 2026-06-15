@@ -5,6 +5,9 @@ import { resolveAdminPostSlugFromEvent } from '../../utils/post-slug-param'
 import { resolveManualPostSlug } from '../../utils/post-path-slug'
 import { queuePostEmbeddingsSync } from '../../utils/ai/embeddings'
 import { getExplicitOutboundSlugs, syncPostWikilinks } from '../../utils/wikilinks'
+import { registerSlugAsAliasOnRename, listPostAliases } from '../../utils/post-aliases'
+import { normalizeWikilinkResolutions } from '../../../utils/normalizeWikilinkResolutions'
+import { rethrowIfWikilinkAmbiguous } from '../../utils/wikilink-sync-error'
 
 export default defineEventHandler(async (event) => {
   const config = useRuntimeConfig(event)
@@ -23,6 +26,7 @@ export default defineEventHandler(async (event) => {
     status?: string
     body?: string
     wikilink_target_slugs?: string[]
+    wikilink_resolutions?: unknown
   }>(event)
 
   const rawTitle = (body.title ?? '').trim()
@@ -34,6 +38,7 @@ export default defineEventHandler(async (event) => {
   const status = normalizeStatus(body.status)
   const rawMarkdown = typeof body.body === 'string' ? body.body : ''
   const slugs = Array.isArray(body.wikilink_target_slugs) ? body.wikilink_target_slugs : []
+  const wikilinkResolutions = normalizeWikilinkResolutions(body.wikilink_resolutions)
 
   const pool = useMysqlPool()
   const conn = await pool.getConnection()
@@ -72,7 +77,23 @@ export default defineEventHandler(async (event) => {
     )
 
     const normalizedExplicit = slugs.map((s) => String(s).trim()).filter(Boolean)
-    const syncResult = await syncPostWikilinks(conn, existing.id, rawMarkdown, normalizedExplicit)
+    const syncResult = await syncPostWikilinks(conn, existing.id, rawMarkdown, normalizedExplicit, {
+      resolutions: wikilinkResolutions,
+      blockOnAmbiguous: true,
+    })
+
+    let alias_registered: string | undefined
+    if (newSlug !== existing.slug) {
+      const aliasResult = await registerSlugAsAliasOnRename(
+        conn,
+        existing.id,
+        existing.slug,
+        newSlug,
+      )
+      if (aliasResult.added && aliasResult.alias) {
+        alias_registered = aliasResult.alias
+      }
+    }
 
     await conn.commit()
 
@@ -84,6 +105,7 @@ export default defineEventHandler(async (event) => {
     )
     const updated = (rows as PostDetail[])[0]!
     const wikilink_target_slugs = await getExplicitOutboundSlugs(conn, existing.id)
+    const aliases = await listPostAliases(conn, existing.id)
 
     let body_html = ''
     try {
@@ -99,15 +121,22 @@ export default defineEventHandler(async (event) => {
       )
     }
     if (newSlug !== existing.slug) {
-      warnings.push(
-        `slug 已从「${existing.slug}」改为「${newSlug}」。其他文章正文中若仍写 [[${existing.slug}]]，需自行修改或重新保存那些文章以更新边表。`,
-      )
+      if (alias_registered) {
+        warnings.push(
+          `slug 已从「${existing.slug}」改为「${newSlug}」；旧 slug 已写入别名「${alias_registered}」，正文 [[${existing.slug}]] 仍可命中。`,
+        )
+      } else {
+        warnings.push(
+          `slug 已从「${existing.slug}」改为「${newSlug}」。其他文章正文中若仍写 [[${existing.slug}]]，需自行修改或重新保存那些文章以更新边表。`,
+        )
+      }
     }
 
     return {
       ...updated,
       body_html,
       wikilink_target_slugs,
+      aliases,
       wikilink_edges_synced: syncResult.inserted,
       slug_changed: newSlug !== existing.slug,
       previous_slug: existing.slug,
@@ -117,6 +146,7 @@ export default defineEventHandler(async (event) => {
     await conn.rollback()
     const err = e as { statusCode?: number; statusMessage?: string; code?: string; errno?: number; sqlMessage?: string }
     if (err.statusCode) throw e
+    rethrowIfWikilinkAmbiguous(e)
     if (err.code === 'ER_DUP_ENTRY' || err.errno === 1062) {
       throw createError({
         statusCode: 409,

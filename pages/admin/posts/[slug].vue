@@ -186,6 +186,12 @@ useHead(() => ({
                       <span class="post-view__info-label">更新时间</span>
                       <span class="post-view__info-value">{{ formatDateTimeZh24(post.updated_at) }}</span>
                     </li>
+                    <li v-if="post.aliases?.length" class="post-view__info-row post-view__info-row--stack">
+                      <span class="post-view__info-label">别名</span>
+                      <span class="post-view__info-value post-view__aliases">
+                        <code v-for="a in post.aliases" :key="a.id">{{ a.alias }}</code>
+                      </span>
+                    </li>
                   </ul>
                 </div>
               </div>

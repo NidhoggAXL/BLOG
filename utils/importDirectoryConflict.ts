@@ -1,5 +1,5 @@
 import { directorySegmentsForFile, type ImportMdFile } from '~/composables/parseImportArchive'
-import { directoryNameAndSlug } from './directorySlug'
+import { directoryImportNameAndSlug } from './directorySlug'
 import type { DirectoryRow } from '~/types/directory'
 
 export type ImportTopLevelDirConflict = {
@@ -32,7 +32,7 @@ export function detectTopLevelDirectoryConflicts(
 
   const conflicts: ImportTopLevelDirConflict[] = []
   for (const importName of importTopNames) {
-    const { slug } = directoryNameAndSlug(importName)
+    const { slug } = directoryImportNameAndSlug(importName)
     const hit = bySlug.get(slug.toLowerCase())
     if (hit) {
       conflicts.push({ importName, existingName: hit.name, slug })

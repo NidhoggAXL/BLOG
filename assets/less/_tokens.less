@@ -65,6 +65,26 @@ html.theme-light {
   --chart-tooltip-bg: var(--bg-elevated);
   --chart-tooltip-border: var(--border);
 
+  --login-bg-image: url('../imgs/亮色背景图.jpg');
+  --login-bg-overlay: linear-gradient(
+    165deg,
+    rgba(228, 236, 244, 0.06) 0%,
+    rgba(218, 230, 240, 0.1) 50%,
+    rgba(208, 222, 234, 0.08) 100%
+  );
+  --login-panel-bg: rgba(255, 255, 255, 0.16);
+  --login-panel-border: rgba(255, 255, 255, 0.58);
+  --login-panel-ring: rgba(14, 32, 48, 0.18);
+  --login-panel-shadow:
+    0 0 0 1px var(--login-panel-ring),
+    0 4px 20px rgba(8, 20, 32, 0.1);
+  --login-input-bg: rgba(255, 255, 255, 0.24);
+  --login-input-bg-focus: rgba(255, 255, 255, 0.34);
+  --login-heading-shadow:
+    0 0 1px rgba(255, 255, 255, 1),
+    0 1px 4px rgba(255, 255, 255, 0.95),
+    0 2px 14px rgba(255, 255, 255, 0.5);
+
   --el-color-primary: var(--accent);
 }
 
@@ -94,6 +114,26 @@ html.theme-dark {
   --chart-grid: color-mix(in srgb, var(--accent) 18%, var(--border));
   --chart-tooltip-bg: var(--bg-elevated);
   --chart-tooltip-border: var(--border);
+
+  --login-bg-image: url('../imgs/暗色主题背景.jpg');
+  --login-bg-overlay: linear-gradient(
+    165deg,
+    rgba(8, 10, 14, 0.12) 0%,
+    rgba(12, 8, 10, 0.18) 50%,
+    rgba(6, 6, 8, 0.14) 100%
+  );
+  --login-panel-bg: rgba(10, 12, 16, 0.45);
+  --login-panel-border: rgba(255, 255, 255, 0.26);
+  --login-panel-ring: rgba(230, 57, 70, 0.22);
+  --login-panel-shadow:
+    0 0 0 1px var(--login-panel-ring),
+    0 4px 22px rgba(0, 0, 0, 0.32);
+  --login-input-bg: rgba(18, 20, 26, 0.52);
+  --login-input-bg-focus: rgba(12, 14, 18, 0.62);
+  --login-heading-shadow:
+    0 0 1px rgba(0, 0, 0, 1),
+    0 1px 5px rgba(0, 0, 0, 0.88),
+    0 2px 14px rgba(0, 0, 0, 0.55);
 
   --el-color-primary: var(--accent);
 }

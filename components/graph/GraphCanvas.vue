@@ -41,7 +41,7 @@ import {
 } from "~/utils/graphDragLifecycle";
 import {
   assignInitialGraphPositions,
-  warmupGraphSimulation,
+  warmupGraphSimulationAsync,
 } from "~/utils/graphLayoutInit";
 import {
   graphLabelOpacityByZoom,
@@ -96,6 +96,8 @@ let nodeDragBehavior: DragBehavior<
 let animating = false;
 let visibleNodeIds: Set<number> | null = null;
 let animationTimer: ReturnType<typeof setTimeout> | null = null;
+let lastVisualStateKey = "";
+let graphWarmingUp = false;
 /** 播放开始前快照，供后续步骤恢复已显现过的节点坐标 */
 let revealLayoutCache: Map<number, GraphNodePose> | null = null;
 /** 正在「拉动」显现的双链：从 anchor 拉向 extend */
@@ -263,6 +265,25 @@ function abortDragInteraction() {
   }
 }
 
+function focusStateKey(focus: Set<number> | null): string {
+  if (!focus || focus.size === 0) return "";
+  return [...focus].sort((a, b) => a - b).join(",");
+}
+
+function needsContinuousRender(): boolean {
+  const sim = simulation?.simulation;
+  if (!sim) return false;
+  if (graphWarmingUp || isDragging() || graphSettling || forceTuning || animating) {
+    return true;
+  }
+  if (linkPullStarts.size > 0) return true;
+  return sim.alpha() > sim.alphaMin() + 1e-4;
+}
+
+function scheduleTickLoop() {
+  if (!rafId) rafId = requestAnimationFrame(tickLoop);
+}
+
 function linkKey(d: GraphSimLink) {
   const s = typeof d.source === "object" ? d.source.id : d.source;
   const t = typeof d.target === "object" ? d.target.id : d.target;
@@ -273,6 +294,8 @@ function stopSimulation() {
   stopAnimationPlayback();
   if (rafId) cancelAnimationFrame(rafId);
   rafId = 0;
+  graphWarmingUp = false;
+  lastVisualStateKey = "";
   simulation?.simulation.stop();
   simulation = null;
 }
@@ -312,6 +335,7 @@ function finishAnimationPlayback(width: number, height: number) {
     root.selectAll("g.graph-node").interrupt().attr("opacity", null);
     root.selectAll("line.graph-link").interrupt().attr("opacity", null);
   }
+  scheduleTickLoop();
 }
 
 function sliceGraphData(data: GraphData): GraphData {
@@ -374,36 +398,56 @@ function updateArrowMarker() {
     .attr("markerHeight", 6 * scale);
 }
 
-function renderFrame() {
+function renderPositions() {
   const svg = svgRef.value;
   if (!svg || !simulation) return;
 
   const g = select(svg).select<SVGGElement>("g.graph-root");
-  const focus = interactionFocusIds.value;
   const strokeW = linkStrokeWidth();
   const hasArrow = !!props.forces.showArrow;
 
+  g.selectAll<SVGLineElement, GraphSimLink>("line.graph-link").each(function (d) {
+    const key = linkKey(d);
+    const pull = animating ? getLinkPullProgress(key) : null;
+    const coords = resolveLinkLineCoords(d, hasArrow, strokeW, pull);
+    select(this)
+      .attr("x1", coords.x1)
+      .attr("y1", coords.y1)
+      .attr("x2", coords.x2)
+      .attr("y2", coords.y2);
+  });
+
+  g.selectAll<SVGGElement, GraphSimNode>("g.graph-node").attr(
+    "transform",
+    (d) => `translate(${d.x ?? 0},${d.y ?? 0})`,
+  );
+}
+
+function renderVisualState(force = false) {
+  const svg = svgRef.value;
+  if (!svg || !simulation) return;
+
+  const focus = interactionFocusIds.value;
+  const strokeW = linkStrokeWidth();
+  const hasArrow = !!props.forces.showArrow;
+  const labelOp = isDragging() ? 0 : labelOpacity();
+  const labelsOn = !isDragging() && labelOp > 0.04;
+  const visualKey = [
+    focusStateKey(focus),
+    strokeW,
+    hasArrow,
+    labelsOn ? 1 : 0,
+    labelOp.toFixed(3),
+    animating ? 1 : 0,
+    isDragging() ? 1 : 0,
+  ].join("|");
+
+  if (!force && visualKey === lastVisualStateKey) return;
+  lastVisualStateKey = visualKey;
+
+  const g = select(svg).select<SVGGElement>("g.graph-root");
+
   g.selectAll<SVGLineElement, GraphSimLink>("line.graph-link")
-    .attr("x1", (d) => {
-      const key = linkKey(d);
-      const pull = animating ? getLinkPullProgress(key) : null;
-      return resolveLinkLineCoords(d, hasArrow, strokeW, pull).x1;
-    })
-    .attr("y1", (d) => {
-      const key = linkKey(d);
-      const pull = animating ? getLinkPullProgress(key) : null;
-      return resolveLinkLineCoords(d, hasArrow, strokeW, pull).y1;
-    })
-    .attr("x2", (d) => {
-      const key = linkKey(d);
-      const pull = animating ? getLinkPullProgress(key) : null;
-      return resolveLinkLineCoords(d, hasArrow, strokeW, pull).x2;
-    })
-    .attr("y2", (d) => {
-      const key = linkKey(d);
-      const pull = animating ? getLinkPullProgress(key) : null;
-      return resolveLinkLineCoords(d, hasArrow, strokeW, pull).y2;
-    })
     .attr("opacity", (d) => {
       if (!animating) return null;
       const pull = getLinkPullProgress(linkKey(d));
@@ -412,7 +456,7 @@ function renderFrame() {
     })
     .attr("stroke-width", strokeW)
     .attr("marker-end", (d) => {
-      if (!props.forces.showArrow) return null;
+      if (!hasArrow) return null;
       const key = linkKey(d);
       if (animating && getLinkPullProgress(key) != null) return null;
       return "url(#graph-arrow)";
@@ -426,17 +470,13 @@ function renderFrame() {
         : "graph-link graph-link--dim";
     });
 
-  g.selectAll<SVGGElement, GraphSimNode>("g.graph-node")
-    .attr("transform", (d) => `translate(${d.x ?? 0},${d.y ?? 0})`)
-    .attr("class", (d) => {
-      if (!focus) return "graph-node";
-      return focus.has(d.id)
-        ? "graph-node graph-node--hi"
-        : "graph-node graph-node--dim";
-    });
+  g.selectAll<SVGGElement, GraphSimNode>("g.graph-node").attr("class", (d) => {
+    if (!focus) return "graph-node";
+    return focus.has(d.id)
+      ? "graph-node graph-node--hi"
+      : "graph-node graph-node--dim";
+  });
 
-  const labelOp = labelOpacity();
-  const labelsOn = labelOp > 0.04;
   g.selectAll<SVGTextElement, GraphSimNode>("text.graph-label")
     .style("display", labelsOn ? null : "none")
     .attr("opacity", labelOp)
@@ -446,19 +486,32 @@ function renderFrame() {
         ? "graph-label graph-label--hi"
         : "graph-label graph-label--dim";
     });
+}
 
+function renderFrame(forceVisual = false) {
+  renderPositions();
+  renderVisualState(forceVisual);
   if (animating) cleanupFinishedLinkPulls();
 }
 
 function tickLoop() {
+  rafId = 0;
   const sim = simulation?.simulation;
   if (sim) {
-    const shouldTick = shouldRunGraphSimulationTick(sim.alpha(), sim.alphaMin(), {
+    let shouldTick = shouldRunGraphSimulationTick(sim.alpha(), sim.alphaMin(), {
       dragging: isDragging(),
       settling: graphSettling,
       forceTuning,
       revealing: animating,
     });
+    if (
+      shouldTick &&
+      isDragging() &&
+      dragSession?.cluster &&
+      sim.alpha() < 0.12
+    ) {
+      shouldTick = performance.now() % 32 < 16;
+    }
     if (shouldTick) sim.tick();
     if (graphSettling && !isGraphSettling(sim.alpha())) {
       graphSettling = false;
@@ -476,7 +529,9 @@ function tickLoop() {
       lastCacheSnapshotAt = now;
     }
   }
-  rafId = requestAnimationFrame(tickLoop);
+  if (needsContinuousRender()) {
+    scheduleTickLoop();
+  }
 }
 
 function isGraphZoomAllowed(event: Event) {
@@ -560,14 +615,16 @@ function createNodeDrag(svgEl: SVGSVGElement) {
         .classed("graph-node--dragging-cluster", shiftCluster);
 
       if (!event.active) svg.on(".zoom", null);
-      renderFrame();
+      lastVisualStateKey = "";
+      scheduleTickLoop();
     })
     .on("drag", function (event, d) {
       suppressNodeClick = true;
       if (dragSession) {
         moveGraphDrag(dragSession, d, { x: event.x, y: event.y }, nodeById);
       }
-      renderFrame();
+      renderPositions();
+      scheduleTickLoop();
     })
     .on("end", function (event, d) {
       select(this)
@@ -686,19 +743,21 @@ function applyForcesLive(reheat = 0) {
     dragging: false,
     settling: graphSettling,
   });
-  if (isDragging() || graphSettling) renderFrame();
+  scheduleTickLoop();
 }
 
 function beginForceTuning() {
   if (!simulation) return;
   forceTuning = true;
   simulation.simulation.alphaTarget(0.28).alpha(0.65).restart();
+  scheduleTickLoop();
 }
 
 function endForceTuning() {
   if (!simulation) return;
   forceTuning = false;
   simulation.simulation.alphaTarget(0);
+  scheduleTickLoop();
 }
 
 function drawGraph(width: number, height: number, opts?: { keepReveal?: boolean }) {
@@ -742,7 +801,9 @@ function drawGraph(width: number, height: number, opts?: { keepReveal?: boolean 
       select(svgEl)
         .select("g.graph-zoom-layer")
         .attr("transform", event.transform);
-      renderFrame();
+      lastVisualStateKey = "";
+      renderVisualState(true);
+      scheduleTickLoop();
     });
 
   svg.call(zoomBehavior).on("dblclick.zoom", null);
@@ -790,13 +851,29 @@ function drawGraph(width: number, height: number, opts?: { keepReveal?: boolean 
   graphLayout.snapshotNodes(nodes);
 
   const mostlyFresh = restoredIds.size < nodes.length * 0.45;
+  lastVisualStateKey = "";
+  renderFrame(true);
+  scheduleTickLoop();
   if (mostlyFresh) {
-    warmupGraphSimulation(simulation, props.forces, width, height, nodes.length);
-    graphLayout.snapshotNodes(simulation.simulation.nodes());
+    graphWarmingUp = true;
+    void warmupGraphSimulationAsync(
+      simulation,
+      props.forces,
+      width,
+      height,
+      nodes.length,
+      () => scheduleTickLoop(),
+    ).then(() => {
+      graphWarmingUp = false;
+      graphLayout.snapshotNodes(simulation.simulation.nodes());
+      graphSettling = false;
+      lastVisualStateKey = "";
+      renderFrame(true);
+      scheduleTickLoop();
+    });
+  } else {
     graphSettling = false;
   }
-
-  if (!rafId) rafId = requestAnimationFrame(tickLoop);
 }
 
 function syncGraphData(width: number, height: number, reheatOverride?: number) {
@@ -929,6 +1006,9 @@ function syncGraphData(width: number, height: number, reheatOverride?: number) {
       )
       .restart();
   }
+  lastVisualStateKey = "";
+  renderFrame(true);
+  scheduleTickLoop();
 }
 
 function playAnimation() {
@@ -1045,7 +1125,9 @@ watch(
 watch(
   () => props.forces.textFadeMultiplier,
   () => {
-    renderFrame();
+    lastVisualStateKey = "";
+    renderVisualState(true);
+    scheduleTickLoop();
   },
 );
 
@@ -1053,9 +1135,17 @@ watch(
   () => [props.forces.lineSizeMultiplier, props.forces.showArrow],
   () => {
     updateArrowMarker();
-    renderFrame();
+    lastVisualStateKey = "";
+    renderVisualState(true);
+    scheduleTickLoop();
   },
 );
+
+watch(interactionFocusIds, () => {
+  lastVisualStateKey = "";
+  renderVisualState(true);
+  scheduleTickLoop();
+});
 
 onMounted(() => {
   const el = rootRef.value;

@@ -2,6 +2,8 @@ import type { ResultSetHeader } from 'mysql2'
 import { resolveManualPostSlug } from '../../utils/post-path-slug'
 import { queuePostEmbeddingsSync } from '../../utils/ai/embeddings'
 import { syncPostWikilinks } from '../../utils/wikilinks'
+import { normalizeWikilinkResolutions } from '../../../utils/normalizeWikilinkResolutions'
+import { rethrowIfWikilinkAmbiguous } from '../../utils/wikilink-sync-error'
 
 function normalizeDirectoryId(raw: unknown): number | null {
   if (raw === undefined || raw === null || raw === '') return null
@@ -31,6 +33,7 @@ export default defineEventHandler(async (event) => {
     body?: string
     /** 额外勾选的双链目标（posts.slug），同步边表，不写入正文 */
     wikilink_target_slugs?: string[]
+    wikilink_resolutions?: unknown
   }>(event)
 
   const rawTitle = (body.title ?? '').trim()
@@ -42,6 +45,7 @@ export default defineEventHandler(async (event) => {
   const status = normalizeStatus(body.status)
   const rawMarkdown = typeof body.body === 'string' ? body.body : ''
   const slugs = Array.isArray(body.wikilink_target_slugs) ? body.wikilink_target_slugs : []
+  const wikilinkResolutions = normalizeWikilinkResolutions(body.wikilink_resolutions)
 
   const pool = useMysqlPool()
   const conn = await pool.getConnection()
@@ -70,7 +74,10 @@ export default defineEventHandler(async (event) => {
 
     const insertId = res.insertId
     const normalizedExplicit = slugs.map((s) => String(s).trim()).filter(Boolean)
-    const syncResult = await syncPostWikilinks(conn, insertId, rawMarkdown, normalizedExplicit)
+    const syncResult = await syncPostWikilinks(conn, insertId, rawMarkdown, normalizedExplicit, {
+      resolutions: wikilinkResolutions,
+      blockOnAmbiguous: true,
+    })
 
     await conn.commit()
 
@@ -99,6 +106,7 @@ export default defineEventHandler(async (event) => {
     await conn.rollback()
     const err = e as { statusCode?: number; statusMessage?: string; code?: string; errno?: number; sqlMessage?: string }
     if (err.statusCode) throw e
+    rethrowIfWikilinkAmbiguous(e)
     if (err.code === 'ER_DUP_ENTRY' || err.errno === 1062) {
       throw createError({
         statusCode: 409,

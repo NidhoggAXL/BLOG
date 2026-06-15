@@ -24,6 +24,7 @@ const props = withDefaults(
 
 const emit = defineEmits<{
   "update:modelValue": [value: string];
+  ready: [];
 }>();
 
 const cmEditorRef = ref<{
@@ -44,6 +45,7 @@ const content = computed({
 
 function onEditorReady(view: EditorView) {
   cmView = view;
+  emit("ready");
 }
 
 function getEditorView() {

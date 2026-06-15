@@ -1,39 +1,15 @@
 import type { WikilinkEmbedResolved } from "~/types/wikilink";
+import { WIKILINK_EMBED_MAX_DEPTH } from "../../../constants/wikilink";
 import { sliceMarkdownByHeadingAnchor } from "../../../utils/markdownAnchorSlice";
 import { formatPublicDisplayName } from "../../../utils/obsidianDisplayPrefix";
-import { renderMarkdownPipeline } from "../../../utils/markedSetup";
 import {
-  applyWikilinkMarkdownLinks,
   wikilinkEmbedCacheKey,
 } from "../../../utils/wikilinkShared";
+import { renderPostBodyHtmlForPool } from "../../utils/render-post-body-html";
 import {
   parseWikilinksFromBody,
-  resolveParsedWikilinksForPreview,
   resolveWikilinkLookup,
 } from "../../utils/wikilinks";
-
-async function buildInnerHtml(
-  executor: { query: Parameters<typeof resolveWikilinkLookup>[0]["query"] },
-  body: string,
-  anchor: string | null,
-  stripOrderPrefix: boolean,
-): Promise<string> {
-  const sliced = sliceMarkdownByHeadingAnchor(body, anchor);
-  const parsed = parseWikilinksFromBody(sliced);
-  const resolved = await resolveParsedWikilinksForPreview(executor, parsed);
-  const lookup = new Map<string, string>();
-  for (const row of resolved) {
-    if (row.resolve_status === "ok" && row.target_slug) {
-      lookup.set(row.slug_lookup, row.target_slug);
-    }
-  }
-  return renderMarkdownPipeline(sliced, (md) =>
-    applyWikilinkMarkdownLinks(md, lookup, {
-      basePath: "/admin/posts",
-      stripOrderPrefix,
-    }),
-  );
-}
 
 function embedDisplayTitle(
   postTitle: string,
@@ -45,6 +21,23 @@ function embedDisplayTitle(
     : postTitle;
   if (!anchor?.trim()) return title;
   return `${title} › ${anchor.trim()}`;
+}
+
+async function buildInnerHtml(
+  pool: ReturnType<typeof useMysqlPool>,
+  body: string,
+  anchor: string | null,
+  stripOrderPrefix: boolean,
+  embedDepth: number,
+): Promise<string> {
+  const sliced = sliceMarkdownByHeadingAnchor(body, anchor);
+  if (embedDepth >= WIKILINK_EMBED_MAX_DEPTH) {
+    return '<p class="wikilink-embed__depth-limit">嵌入层级过深</p>';
+  }
+  return renderPostBodyHtmlForPool(pool, sliced, {
+    stripOrderPrefix,
+    embedDepth: embedDepth + 1,
+  });
 }
 
 export default defineEventHandler(async (event) => {
@@ -111,7 +104,7 @@ export default defineEventHandler(async (event) => {
       [post.id],
     );
     const postBody = (postRows as { body: string }[])[0]?.body ?? "";
-    const body_html = await buildInnerHtml(pool, postBody, row.anchor, stripOrderPrefix);
+    const body_html = await buildInnerHtml(pool, postBody, row.anchor, stripOrderPrefix, 0);
     const cacheKey = wikilinkEmbedCacheKey(row.slug_lookup, row.anchor);
 
     out.push({

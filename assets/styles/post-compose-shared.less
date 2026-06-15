@@ -412,6 +412,17 @@
   border: 1px solid var(--post-read-border, var(--admin-border));
 }
 
+.post-view__info-row--stack .post-view__info-value {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.post-view__aliases code {
+  display: inline-block;
+}
+
 .post-view__status-tag {
   align-self: flex-start;
 }

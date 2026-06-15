@@ -119,11 +119,14 @@ export function applyWikilinkMarkdownLinks(
     embedContentByLookup?: Map<string, WikilinkEmbedContent>;
     /** 公开页：去掉 Obsidian 排序前缀作为锚文本 */
     stripOrderPrefix?: boolean;
+    /** 已达嵌入递归深度上限时，![[...]] 显示降级提示 */
+    embedDepthLimitReached?: boolean;
   },
 ): string {
   const basePath = options?.basePath ?? "/admin/posts";
   const embedMap = options?.embedContentByLookup;
   const stripOrderPrefix = options?.stripOrderPrefix === true;
+  const embedDepthLimitReached = options?.embedDepthLimitReached === true;
   const masked = maskMarkdownForWikilinkScan(markdown);
   const re = /(!?)\[\[([^\]\n]+)\]\]/g;
   const replacements: { start: number; end: number; replacement: string }[] =
@@ -142,7 +145,9 @@ export function applyWikilinkMarkdownLinks(
     );
     let replacement: string;
 
-    if (embed && embedContent) {
+    if (embed && embedDepthLimitReached) {
+      replacement = `<span class="wikilink wikilink--embed wikilink--depth-limit">嵌入层级过深：${escapeHtml(display)}</span>`;
+    } else if (embed && embedContent) {
       replacement = buildWikilinkEmbedBlock(
         embedContent.title,
         embedContent.slug,

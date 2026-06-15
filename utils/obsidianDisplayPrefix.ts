@@ -1,6 +1,12 @@
 /** 匹配 Obsidian 常见排序前缀：01_、01 、01-、01. 等（不吞掉名称中的括号） */
 const ORDER_PREFIX_RE = /^\d+(?:[\s_\-]+|\.)/
 
+/** 是否含 Obsidian 排序前缀（手动目录名禁止） */
+export function hasObsidianOrderPrefix(raw: string): boolean {
+  const s = raw.trim()
+  return s.length > 0 && ORDER_PREFIX_RE.test(s)
+}
+
 export function stripObsidianOrderPrefix(raw: string): string {
   const s = raw.trim()
   if (!s) return s

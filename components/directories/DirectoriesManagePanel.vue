@@ -20,8 +20,8 @@ import {
   buildDirectoriesAdminNavTree,
   filterDirectoriesAdminNavTree,
   findDirectoriesAdminNavNode,
-  isRealDirectoryNavId,
 } from "~/utils/directoriesAdminNav";
+import { isRealDirectoryNavId } from "~/utils/isRealDirectoryNavId";
 import {
   countPostsInSubtree,
   expandLibraryAncestors,
@@ -473,14 +473,25 @@ async function onDeleteDirectory(row: DirectoryRow) {
 
       <template v-else-if="selectedDir">
         <div class="admin-module-page__list-head">
-          <h2 class="admin-module-page__list-title">{{ selectedDir.name }}</h2>
-          <p class="admin-module-page__list-path">{{ selectedDir.pathLabel }}</p>
-          <div class="admin-module-page__list-tags">
-            <code class="admin-module-page__list-slug">{{ selectedDir.slug }}</code>
-            <el-tag size="small" type="info">
-              本层 {{ selectedDir.directPostCount }} 篇
-            </el-tag>
-            <el-tag size="small">含子级 {{ subtreePostCount }} 篇</el-tag>
+          <div class="admin-module-page__list-head-row">
+            <h2 class="admin-module-page__list-title">{{ selectedDir.name }}</h2>
+            <span
+              v-if="selectedDir.pathLabel !== selectedDir.name"
+              class="admin-module-page__list-path"
+            >
+              {{ selectedDir.pathLabel }}
+            </span>
+            <div class="admin-module-page__list-meta">
+              <span class="admin-module-page__list-meta-item">
+                Slug：<code class="admin-module-page__list-slug">{{ selectedDir.slug }}</code>
+              </span>
+              <span class="admin-module-page__list-meta-item">
+                含文章 {{ subtreePostCount }} 篇
+              </span>
+              <span class="admin-module-page__list-meta-item">
+                子目录 {{ childDirectories.length }} 个
+              </span>
+            </div>
           </div>
         </div>
 
