@@ -5,6 +5,7 @@ import {
   findCalloutBlocks,
 } from "~/utils/markdownCallouts";
 import { createHeadingAnchorId } from "~/utils/markdownAnchorSlice";
+import { githubRawToJsDelivr } from "~/utils/githubImageCdn";
 
 const SHIKI_LANGS = [
   "javascript",
@@ -136,6 +137,14 @@ function getMarked(): Marked {
         const body =
           escaped && typeof text === "string" ? text : escapeHtml(String(text));
         return `<pre class="shiki shiki-themes github-light github-dark" data-lang="${langLabel}"><code${classAttr}>${body}</code></pre>\n`;
+      },
+      image({ href, title, text }) {
+        const src = githubRawToJsDelivr(href ?? "");
+        const alt = escapeHtmlAttr(String(text ?? ""));
+        const titleAttr = title
+          ? ` title="${escapeHtmlAttr(String(title))}"`
+          : "";
+        return `<img src="${escapeHtmlAttr(src)}" alt="${alt}"${titleAttr} loading="lazy" decoding="async" />\n`;
       },
     },
   });
