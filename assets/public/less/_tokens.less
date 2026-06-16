@@ -1,26 +1,15 @@
 // 前台设计令牌：复用全站 tokens；.app-shell 仅叠加壁纸透卡与文字描边
 @import '../../less/_tokens.less';
+@import './_public-bg.less';
 
 [data-theme='light'],
 html.theme-light {
   --public-bg-image: url('../../imgs/亮色背景图.jpg');
-  --public-bg-overlay: linear-gradient(
-    165deg,
-    rgba(228, 236, 244, 0.06) 0%,
-    rgba(218, 230, 240, 0.1) 50%,
-    rgba(208, 222, 234, 0.08) 100%
-  );
 }
 
 [data-theme='dark'],
 html.theme-dark {
   --public-bg-image: url('../../imgs/暗色主题背景.jpg');
-  --public-bg-overlay: linear-gradient(
-    165deg,
-    rgba(8, 10, 14, 0.12) 0%,
-    rgba(12, 8, 10, 0.18) 50%,
-    rgba(6, 6, 8, 0.14) 100%
-  );
 }
 
 [data-theme='light'] .app-shell,

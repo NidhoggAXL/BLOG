@@ -6,34 +6,28 @@
   position: relative;
   isolation: isolate;
   background: transparent;
+  .public-wallpaper-layers();
+}
 
-  &::before,
-  &::after {
-    content: '';
-    position: fixed;
-    pointer-events: none;
-  }
+[data-theme='light'] .app-shell::before,
+html.theme-light .app-shell::before {
+  filter: saturate(1.06);
+}
 
-  &::before {
-    inset: -12px;
-    z-index: -2;
-    background: var(--public-bg-image) center / cover no-repeat;
-    transform: scale(1.02);
-  }
+[data-theme='dark'] .app-shell::before,
+html.theme-dark .app-shell::before {
+  filter: contrast(1.04) saturate(1.05);
+}
 
-  &::after {
-    inset: 0;
-    z-index: -1;
-    background: var(--public-bg-overlay);
+@media (max-width: 767px) {
+  [data-theme='dark'] .app-shell::before,
+  html.theme-dark .app-shell::before {
+    filter: contrast(1.06) saturate(1.08);
   }
 }
 
 [data-theme='light'] .app-shell,
 html.theme-light .app-shell {
-  &::before {
-    filter: saturate(1.06);
-  }
-
   color: var(--text);
   text-shadow: var(--public-text-shadow);
 
