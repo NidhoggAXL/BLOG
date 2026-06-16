@@ -49,11 +49,11 @@ function onDirClick(node: TreeNode) {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: clamp(1.25rem, 5vh, 3rem) 1.25rem 2rem;
+  padding: clamp(1.25rem, 5vh, 3rem) clamp(1rem, 4vw, 2.5rem) 2rem;
 }
 
 .blog-landing__inner {
-  width: min(100%, 52rem);
+  width: min(100%, 68rem);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -90,29 +90,29 @@ function onDirClick(node: TreeNode) {
   margin: 0;
   padding: 0;
   width: 100%;
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 1rem;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.875rem;
 }
 
 .blog-landing__dir-grid > li {
-  flex: 0 1 auto;
+  min-width: 0;
 }
 
 .blog-landing__dir-card {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-width: 10.5rem;
+  width: 100%;
   min-height: 5.25rem;
-  padding: 1.35rem 2rem;
+  padding: 1.35rem 1.75rem;
   border: 1px solid var(--border);
   border-radius: var(--card-radius);
   background: var(--bg-elevated);
   color: var(--text);
   text-align: center;
   cursor: pointer;
+  box-sizing: border-box;
   transition:
     background 0.15s ease,
     border-color 0.15s ease,
@@ -134,15 +134,32 @@ function onDirClick(node: TreeNode) {
   letter-spacing: 0.02em;
 }
 
+@media (min-width: 480px) {
+  .blog-landing__dir-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+  }
+}
+
 @media (min-width: 640px) {
   .blog-landing__dir-card {
-    min-width: 12.5rem;
     min-height: 5.75rem;
-    padding: 1.5rem 2.25rem;
+    padding: 1.5rem 2rem;
   }
 
   .blog-landing__dir-name {
     font-size: 1.12rem;
+  }
+}
+
+@media (min-width: 900px) {
+  .blog-landing__dir-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 1.125rem;
+  }
+
+  .blog-landing__dir-card {
+    padding: 1.5rem 2rem;
   }
 }
 </style>
