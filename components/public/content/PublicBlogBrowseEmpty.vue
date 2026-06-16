@@ -1,7 +1,15 @@
 <script setup lang="ts">
+const { isMobileViewport } = useBlogReadPanels();
+
 defineProps<{
   dirName?: string;
 }>();
+
+const hintText = computed(() =>
+  isMobileViewport.value
+    ? "点击屏幕左侧按钮打开目录，选择一篇文章开始阅读。"
+    : "请从左侧目录选择一篇文章开始阅读。",
+);
 </script>
 
 <template>
@@ -9,7 +17,7 @@ defineProps<{
     <h2 class="blog-browse-empty__title">
       {{ dirName ? `「${dirName}」` : "当前目录" }}
     </h2>
-    <p class="blog-browse-empty__hint">请从左侧目录选择一篇文章开始阅读。</p>
+    <p class="blog-browse-empty__hint">{{ hintText }}</p>
     <NuxtLink to="/blog" class="blog-browse-empty__back">← 返回首页</NuxtLink>
   </div>
 </template>
@@ -24,11 +32,12 @@ defineProps<{
   align-items: center;
   text-align: center;
   gap: 0.65rem;
+  padding-inline: 1rem;
 }
 
 .blog-browse-empty__title {
   margin: 0;
-  font-size: 1.2rem;
+  font-size: clamp(1.05rem, 3.5vw, 1.2rem);
   font-weight: 600;
   color: var(--text);
 }
@@ -37,6 +46,7 @@ defineProps<{
   margin: 0;
   font-size: 0.92rem;
   color: var(--muted);
+  max-width: 22rem;
 }
 
 .blog-browse-empty__back {

@@ -13,8 +13,13 @@ const {
   tocRailOpen,
   isBlogLanding,
   isBlogReadMode,
+  isMobileViewport,
   isPublicContentInset,
   showPublicSidebar,
+  hasReadOverlayOpen,
+  toggleSidebar,
+  toggleTocRail,
+  closeAllPanels,
 } = useBlogReadPanels()
 </script>
 
@@ -24,6 +29,7 @@ const {
     :class="{
       'app-shell--blog-read': isBlogReadMode,
       'app-shell--blog-landing': isBlogLanding,
+      'app-shell--mobile-read': isBlogReadMode && isMobileViewport,
     }"
   >
     <div
@@ -33,13 +39,19 @@ const {
         'app-body--content-inset': isPublicContentInset,
       }"
     >
+      <div
+        v-if="hasReadOverlayOpen"
+        class="blog-read-backdrop"
+        aria-hidden="true"
+        @click="closeAllPanels"
+      />
       <button
-        v-if="isBlogReadMode"
+        v-if="isBlogReadMode && !(isMobileViewport && sidebarOpen)"
         type="button"
         class="blog-read-edge blog-read-edge--left"
         :aria-label="sidebarOpen ? '隐藏目录' : '显示目录'"
         :aria-expanded="sidebarOpen"
-        @click="sidebarOpen = !sidebarOpen"
+        @click="toggleSidebar"
       >
         <span class="blog-read-edge-glyph" aria-hidden="true">{{
           sidebarOpen ? "《" : "》"
@@ -56,12 +68,12 @@ const {
         </main>
       </div>
       <button
-        v-if="isBlogReadMode"
+        v-if="isBlogReadMode && !(isMobileViewport && tocRailOpen)"
         type="button"
         class="blog-read-edge blog-read-edge--right"
         :aria-label="tocRailOpen ? '隐藏大纲与双链' : '显示大纲与双链'"
         :aria-expanded="tocRailOpen"
-        @click="tocRailOpen = !tocRailOpen"
+        @click="toggleTocRail"
       >
         <span class="blog-read-edge-glyph" aria-hidden="true">{{
           tocRailOpen ? "》" : "《"
@@ -83,6 +95,7 @@ const {
   display: flex;
   flex-direction: column;
   height: 100vh;
+  height: 100dvh;
   box-sizing: border-box;
   padding: var(--layout-gap);
   gap: var(--layout-gap);

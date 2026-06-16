@@ -46,9 +46,16 @@ const { onMarkdownContentClick } = useSpaMarkdownLinkClick("/blog/");
   border-bottom: 1px solid var(--border);
 }
 
+@media (max-width: 767px) {
+  .post-header {
+    margin-bottom: 1.25rem;
+    padding-bottom: 1rem;
+  }
+}
+
 .post-title {
   margin: 0;
-  font-size: 1.75rem;
+  font-size: clamp(1.35rem, 4vw, 1.75rem);
   font-weight: 600;
   line-height: 1.25;
   color: var(--text);

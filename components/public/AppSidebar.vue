@@ -6,7 +6,8 @@ const route = useRoute();
 const { toggleTheme, isDark } = useAppTheme();
 const { loadPosts, loadDirectories, posts } = useBlogContent();
 const { refreshPublicContent, refreshing } = usePublicContentRefresh();
-const { sidebarOpen, isBlogReadMode } = useBlogReadPanels();
+const { sidebarOpen, isBlogReadMode, isMobileViewport, closeAllPanels } =
+  useBlogReadPanels();
 
 await Promise.all([loadDirectories(), loadPosts()]);
 
@@ -30,7 +31,12 @@ const {
 } = useSiteMenu();
 
 const sidebarCollapsed = computed(
-  () => isBlogReadMode.value && !sidebarOpen.value,
+  () =>
+    isBlogReadMode.value && !sidebarOpen.value && !isMobileViewport.value,
+);
+
+const sidebarDrawerMode = computed(
+  () => isBlogReadMode.value && isMobileViewport.value,
 );
 
 const activeSlug = computed(() => {
@@ -53,28 +59,54 @@ watch(
   },
   { immediate: true },
 );
+
+watch(
+  () => route.path,
+  () => {
+    if (sidebarDrawerMode.value && sidebarOpen.value) {
+      closeAllPanels();
+    }
+  },
+);
 </script>
 
 <template>
-  <aside
-    class="sidebar"
-    :class="{ 'sidebar--collapsed': sidebarCollapsed }"
-    :aria-hidden="sidebarCollapsed"
-  >
-    <div class="sidebar-card card">
-      <div class="side-header">
-        <div class="side-header__row">
-          <h2 class="side-title">目录</h2>
-          <NuxtLink
-            v-if="isBlogReadMode"
-            to="/blog"
-            class="side-home-btn"
-            title="返回首页"
-            aria-label="返回首页"
-          >
-            <el-icon><HomeFilled /></el-icon>
-          </NuxtLink>
-        </div>
+  <Teleport :disabled="!sidebarDrawerMode" to="body">
+    <aside
+      class="sidebar"
+      :class="{
+        'sidebar--collapsed': sidebarCollapsed,
+        'sidebar--drawer': sidebarDrawerMode,
+        'sidebar--overlay-open': isBlogReadMode && sidebarOpen,
+      }"
+      :aria-hidden="sidebarDrawerMode && !sidebarOpen ? true : undefined"
+      :inert="sidebarDrawerMode && !sidebarOpen ? true : undefined"
+    >
+      <div class="sidebar-card card">
+        <div class="side-header">
+          <div class="side-header__row">
+            <h2 class="side-title">目录</h2>
+            <div class="side-header__actions">
+              <button
+                v-if="sidebarDrawerMode && sidebarOpen"
+                type="button"
+                class="side-close-btn"
+                aria-label="关闭目录"
+                @click="closeAllPanels"
+              >
+                ×
+              </button>
+              <NuxtLink
+                v-if="isBlogReadMode"
+                to="/blog"
+                class="side-home-btn"
+                title="返回首页"
+                aria-label="返回首页"
+              >
+                <el-icon><HomeFilled /></el-icon>
+              </NuxtLink>
+            </div>
+          </div>
         <nav v-if="breadcrumbs.length > 1" class="breadcrumb">
           <template
             v-for="(crumb, index) in breadcrumbs"
@@ -145,6 +177,7 @@ watch(
       </div>
     </div>
   </aside>
+  </Teleport>
 </template>
 
 <style scoped lang="less">
@@ -168,6 +201,14 @@ watch(
   pointer-events: none;
 }
 
+.sidebar--drawer {
+  width: min(88vw, 17.5rem);
+  flex-shrink: 0;
+  transition:
+    transform 0.42s cubic-bezier(0.22, 1, 0.36, 1),
+    visibility 0s linear 0.42s;
+}
+
 .sidebar-card {
   flex: 1;
   min-height: 0;
@@ -189,6 +230,39 @@ watch(
   justify-content: space-between;
   gap: 0.5rem;
   margin-bottom: 0.65rem;
+}
+
+.side-header__actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-shrink: 0;
+}
+
+.side-close-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--muted);
+  font-size: 1.25rem;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    background 0.12s,
+    color 0.12s,
+    border-color 0.12s;
+
+  &:hover {
+    background: var(--bg-hover);
+    color: var(--accent);
+    border-color: color-mix(in srgb, var(--accent) 40%, var(--border));
+  }
 }
 
 .side-title {

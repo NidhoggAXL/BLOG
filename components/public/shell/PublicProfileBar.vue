@@ -38,14 +38,17 @@ const displayEmail = computed(() => {
         class="profile-bar__avatar"
         width="40"
         height="40"
-      >
+      />
       <div class="profile-bar__text">
         <span class="profile-bar__name">{{ profile.name }}</span>
         <span
           class="profile-bar__bio"
           :class="{ 'profile-bar__bio--full': expandBio }"
-        >{{ profile.bio }}</span>
-        <span v-if="displayEmail" class="profile-bar__email">{{ displayEmail }}</span>
+          >{{ profile.bio }}</span
+        >
+        <span v-if="displayEmail" class="profile-bar__email">{{
+          displayEmail
+        }}</span>
       </div>
     </div>
 
@@ -70,7 +73,9 @@ const displayEmail = computed(() => {
         :class="{ 'profile-bar__action--idle': !githubHref }"
         :target="githubHref ? '_blank' : undefined"
         :rel="githubHref ? 'noopener noreferrer' : undefined"
-        :title="githubHref ? `GitHub @${profile.githubUsername}` : 'GitHub（未设置）'"
+        :title="
+          githubHref ? `GitHub @${profile.githubUsername}` : 'GitHub（未设置）'
+        "
         @click="!githubHref && $event.preventDefault()"
       >
         <svg class="profile-bar__icon" viewBox="0 0 24 24" aria-hidden="true">
@@ -91,10 +96,13 @@ const displayEmail = computed(() => {
         title="Gitee"
         @click="!giteeHref && $event.preventDefault()"
       >
-        <span class="profile-bar__icon profile-bar__icon--gitee" aria-hidden="true">G</span>
+        <span
+          class="profile-bar__icon profile-bar__icon--gitee"
+          aria-hidden="true"
+          >G</span
+        >
         <span class="profile-bar__action-label">Gitee</span>
       </a>
-
     </div>
   </header>
 </template>
@@ -299,12 +307,14 @@ const displayEmail = computed(() => {
 
 .profile-bar__action-label {
   @media (max-width: 720px) {
-    display: none;
+    .profile-bar:not(.profile-bar--landing) & {
+      display: none;
+    }
   }
 }
 
 @media (max-width: 768px) {
-  .profile-bar {
+  .profile-bar:not(.profile-bar--landing) {
     grid-template-columns: 1fr auto;
     height: auto;
     padding: 0.85rem 1rem;

@@ -48,8 +48,15 @@ function onDirClick(node: TreeNode) {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  /* 内容超出视口时 center 会把顶部 hero 裁到滚动区外，手机端无法看到个人信息 */
+  justify-content: flex-start;
   padding: clamp(1.25rem, 5vh, 3rem) clamp(1rem, 4vw, 2.5rem) 2rem;
+}
+
+@media (min-width: 900px) and (min-height: 640px) {
+  .blog-landing {
+    justify-content: center;
+  }
 }
 
 .blog-landing__inner {
@@ -63,7 +70,8 @@ function onDirClick(node: TreeNode) {
 .blog-landing__hero {
   width: min(100%, 26rem);
   padding: 0;
-  overflow: hidden;
+  overflow: visible;
+  flex-shrink: 0;
 }
 
 .blog-landing__dirs {
@@ -149,6 +157,13 @@ function onDirClick(node: TreeNode) {
 
   .blog-landing__dir-name {
     font-size: 1.12rem;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 899px) {
+  .blog-landing__dir-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1rem;
   }
 }
 

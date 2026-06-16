@@ -41,7 +41,7 @@ const drawerOpen = ref(false)
 .ai-chat-fab {
   position: fixed;
   right: calc(var(--layout-gap, 12px) + 8px);
-  bottom: calc(var(--layout-gap, 12px) + 8px);
+  bottom: calc(var(--layout-gap, 12px) + 8px + env(safe-area-inset-bottom, 0px));
   z-index: 1200;
   display: inline-flex;
   align-items: center;

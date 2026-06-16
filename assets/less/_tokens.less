@@ -137,3 +137,29 @@ html.theme-dark {
 
   --el-color-primary: var(--accent);
 }
+
+/* 前台阅读响应式断点（mobile <768, tablet 768–1023, desktop ≥1024） */
+@media (max-width: 767px) {
+  :root,
+  [data-theme='light'],
+  html.theme-light,
+  [data-theme='dark'],
+  html.theme-dark {
+    --layout-gap: 0.75rem;
+    --read-side-panel-width: min(88vw, 17.5rem);
+    --sidebar-width: var(--read-side-panel-width);
+    --toc-rail-width: var(--read-side-panel-width);
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1023px) {
+  :root,
+  [data-theme='light'],
+  html.theme-light,
+  [data-theme='dark'],
+  html.theme-dark {
+    --read-side-panel-width: 15rem;
+    --sidebar-width: var(--read-side-panel-width);
+    --toc-rail-width: var(--read-side-panel-width);
+  }
+}

@@ -108,7 +108,7 @@ defineProps<{
   overflow-y: auto;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .toc-rail {
     width: 100%;
     flex: none;
@@ -116,7 +116,7 @@ defineProps<{
 
   .toc-card--outline,
   .toc-card--links {
-    min-height: 10rem;
+    min-height: 8rem;
   }
 }
 </style>

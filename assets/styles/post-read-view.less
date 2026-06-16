@@ -64,10 +64,17 @@ html {
   --post-compose-stage-bottom: 20px;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   html {
     --post-read-content-pad-x: 20px;
     --post-read-content-pad-y: 16px;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1023px) {
+  html {
+    --post-read-content-pad-x: 32px;
+    --post-read-content-pad-y: 18px;
   }
 }
 
