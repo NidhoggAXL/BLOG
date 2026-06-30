@@ -1,0 +1,277 @@
+@import "./variables.less";
+
+/** 目录管理页：借鉴商品分类管理的 hero + 统计 + 树卡片布局 */
+
+.admin-directories-page {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  gap: var(--admin-card-gap);
+}
+
+.admin-directories-page__hero {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px 24px;
+}
+
+.admin-directories-page__hero-main {
+  min-width: 0;
+  flex: 1;
+}
+
+.admin-directories-page__title {
+  margin: 0 0 6px;
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--admin-text);
+}
+
+.admin-directories-page__desc {
+  margin: 0;
+  max-width: 560px;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--admin-muted);
+}
+
+.admin-directories-page__hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.admin-directories-page__stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--admin-card-gap);
+}
+
+.admin-directories-page__stat-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px 18px;
+  border: 1px solid var(--admin-border);
+  border-radius: @radius-lg;
+  background: var(--admin-toolbar-bg);
+}
+
+.admin-directories-page__stat-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--admin-muted);
+}
+
+.admin-directories-page__stat-value {
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.1;
+  color: var(--admin-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.admin-directories-page__tree-card {
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 auto;
+  height: auto;
+  overflow: visible;
+}
+
+.admin-directories-page__tree-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px 16px;
+  margin-bottom: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--admin-border);
+}
+
+.admin-directories-page__tree-head-main {
+  min-width: 0;
+}
+
+.admin-directories-page__tree-title {
+  margin: 0 0 4px;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--admin-text);
+}
+
+.admin-directories-page__tree-subtitle {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--admin-muted);
+}
+
+.admin-directories-page__tree-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.admin-directories-page__search {
+  width: min(260px, 100%);
+}
+
+.admin-directories-page__tree-body {
+  flex: 0 0 auto;
+  height: auto;
+  overflow: visible;
+  padding: 4px 0 2px;
+}
+
+/* el-tree 默认节点高度 26px，自定义块更高时必须强制 auto，否则会叠在一起 */
+.admin-directories-page__tree.el-tree {
+  --el-tree-node-content-height: auto;
+  width: 100%;
+  height: auto !important;
+  background: transparent;
+  overflow: visible;
+}
+
+.admin-directories-page__tree.el-tree .el-tree-node {
+  position: relative;
+  white-space: normal;
+}
+
+.admin-directories-page__tree.el-tree .el-tree-node__content {
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+  width: 100%;
+  height: auto !important;
+  min-height: 0;
+  padding: 0;
+  margin: 0 0 14px;
+  background: transparent !important;
+  overflow: visible;
+}
+
+.admin-directories-page__tree.el-tree .el-tree-node:focus > .el-tree-node__content {
+  background: transparent !important;
+}
+
+.admin-directories-page__tree.el-tree .el-tree-node__children {
+  padding-left: 22px;
+  overflow: visible;
+}
+
+.admin-directories-page__tree.el-tree .el-tree-node__expand-icon {
+  flex-shrink: 0;
+  align-self: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  margin-right: 2px;
+  padding: 0;
+  color: var(--admin-accent, var(--accent));
+  font-size: 18px;
+}
+
+.admin-directories-page__tree.el-tree .el-tree-node__expand-icon.is-leaf {
+  color: transparent;
+  pointer-events: none;
+}
+
+.admin-directories-page__tree-node {
+  display: flex;
+  flex: 1;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px 20px;
+  min-width: 0;
+  margin: 0;
+  padding: 12px 16px;
+  border: 1px solid var(--admin-border);
+  border-radius: @radius-lg;
+  background: var(--admin-toolbar-bg);
+  transition:
+    border-color @transition-fast,
+    background @transition-fast;
+
+  &:hover {
+    border-color: color-mix(in srgb, var(--admin-accent, var(--accent)) 28%, var(--admin-border));
+    background: var(--admin-nav-hover);
+  }
+}
+
+.admin-directories-page__tree-node-main {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  flex: 1;
+}
+
+.admin-directories-page__tree-node-name {
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--admin-text);
+}
+
+.admin-directories-page__tree-node-meta {
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--admin-muted);
+  word-break: break-word;
+}
+
+.admin-directories-page__tree-node-actions {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 2px;
+  opacity: 0.72;
+  transition: opacity @transition-fast;
+
+  .admin-directories-page__tree-node:hover & {
+    opacity: 1;
+  }
+}
+
+.admin-directories-page__empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 240px;
+}
+
+.admin-directories-page__alert {
+  flex-shrink: 0;
+}
+
+@media (max-width: 900px) {
+  .admin-directories-page__stats {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-directories-page__tree-node {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .admin-directories-page__tree-node-actions {
+    justify-content: flex-end;
+    opacity: 1;
+  }
+
+  .admin-directories-page__search {
+    width: 100%;
+  }
+}

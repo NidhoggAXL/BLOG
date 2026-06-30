@@ -414,7 +414,7 @@ onMounted(() => {
     <section class="admin-card admin-card--pad admin-module-page__top">
       <div class="admin-module-page__top-head">
         <div class="admin-module-page__intro">
-          <h1 class="admin-module-page__title">文章</h1>
+          <h1 class="admin-module-page__title">文章管理</h1>
           <p class="admin-module-page__desc">
             按目录浏览与编辑文章；支持状态筛选、搜索与批量操作。目录请在「目录结构」中维护。
           </p>

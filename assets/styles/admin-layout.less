@@ -77,6 +77,11 @@
   -ms-overflow-style: none;
 }
 
+.admin-workspace:not(.admin-workspace--fill) {
+  /* 内容页：子页面按内容增高，由工作区承担滚动 */
+  align-items: stretch;
+}
+
 .admin-workspace::-webkit-scrollbar {
   width: 0;
   height: 0;
@@ -94,13 +99,18 @@
   display: flex;
   flex-direction: column;
   gap: var(--admin-card-gap);
-  flex: 1;
-  min-height: 0;
   width: 100%;
   overflow: visible;
 }
 
+.admin-page:not(.admin-page--fill) {
+  flex: 0 1 auto;
+  min-height: auto;
+}
+
 .admin-page--fill {
+  flex: 1;
+  min-height: 0;
   overflow: hidden;
 }
 

@@ -123,7 +123,7 @@ const menu = [
   { to: "/admin", label: "控制台", icon: "◆" },
   {
     to: "/admin/posts",
-    label: "文章",
+    label: "文章管理",
     icon: "▤",
     children: [
       { to: "/admin/posts/directories", label: "目录结构", icon: "▦" },
@@ -137,18 +137,25 @@ const isPostsSectionRoute = computed(() => {
   return path === "/admin/posts" || path.startsWith("/admin/posts/");
 });
 
-/** 需要占满工作区高度的页面（文章列表、图谱等） */
-const fillRoutes = ["/admin/posts", "/admin/posts/directories"];
+/** 需要占满工作区高度的页面（文章列表、图谱等，仅精确路径） */
+const fillRoutes = ["/admin/posts"] as const;
 
 /** 长表单/配置页：需在工作区内滚动，不能套用 fill 的 overflow:hidden */
-const fillRouteExcludes = ["/admin/posts/new"];
+const fillRouteExcludes = [
+  "/admin/posts/new",
+  "/admin/posts/directories",
+  "/admin/posts/import",
+  "/admin/posts/edit",
+] as const;
 
 const isFillPage = computed(() => {
   const path = route.path;
-  if (fillRouteExcludes.some((p) => path === p || path.startsWith(`${p}/`))) {
+  if (
+    fillRouteExcludes.some((p) => path === p || path.startsWith(`${p}/`))
+  ) {
     return false;
   }
-  return fillRoutes.some((p) => path === p || path.startsWith(`${p}/`));
+  return (fillRoutes as readonly string[]).includes(path);
 });
 
 const title = computed(() => {
@@ -189,6 +196,7 @@ function isMenuActive(to: string) {
 <style lang="less">
 @import "~/assets/styles/admin-layout.less";
 @import "~/assets/styles/admin-module-page.less";
+@import "~/assets/styles/admin-directories-page.less";
 @import "~/assets/styles/admin-tree-nav.less";
 @import "~/assets/styles/admin-data-table.less";
 @import "~/assets/styles/dashboard.less";
