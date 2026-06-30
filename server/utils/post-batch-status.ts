@@ -4,7 +4,7 @@ import {
   fetchPostsByDirectory,
   resolvePostsBySlugs,
 } from './post-batch-delete'
-import { queuePostEmbeddingsSync } from './ai/embeddings'
+import { queuePostTextIndexSync } from './ai/post-text-index'
 import { normalizeStatus, type PostStatus } from './post-mutate'
 
 export type BatchStatusResult = {
@@ -76,7 +76,7 @@ export async function batchUpdatePostStatus(
     await conn.commit()
 
     for (const row of toUpdate) {
-      queuePostEmbeddingsSync(pool, row.id)
+      queuePostTextIndexSync(pool, row.id)
     }
 
     return {

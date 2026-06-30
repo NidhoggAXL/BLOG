@@ -9,5 +9,6 @@ export type ImportBatchResult = {
   directories_created: number
   posts_created: number
   post_slugs: string[]
+  post_ids: number[]
   warnings: string[]
 }

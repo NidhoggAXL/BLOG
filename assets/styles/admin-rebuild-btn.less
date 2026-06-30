@@ -1,0 +1,58 @@
+@import 'variables.less';
+
+.admin-rebuild-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  padding: 8px 14px;
+  border-radius: @radius-md;
+  border: 1px solid color-mix(in srgb, var(--accent) 38%, var(--admin-border));
+  font-size: 13px;
+  font-weight: 550;
+  line-height: 1.35;
+  color: var(--btn-primary-fg);
+  background: var(--btn-primary-bg);
+  box-shadow: 0 2px 8px var(--btn-primary-shadow);
+  cursor: pointer;
+  transition:
+    filter @transition-fast,
+    box-shadow @transition-fast,
+    transform @transition-fast;
+
+  &:hover:not(:disabled) {
+    filter: brightness(1.06);
+    box-shadow: 0 3px 10px var(--btn-primary-shadow);
+  }
+
+  &:active:not(:disabled) {
+    transform: translateY(1px);
+  }
+
+  &:disabled {
+    opacity: 0.72;
+    cursor: not-allowed;
+  }
+
+  &:focus-visible {
+    outline: 2px solid color-mix(in srgb, var(--accent) 55%, transparent);
+    outline-offset: 2px;
+  }
+}
+
+.admin-rebuild-btn__icon {
+  flex-shrink: 0;
+}
+
+.admin-rebuild-btn__icon--spin {
+  animation: admin-rebuild-spin 0.9s linear infinite;
+}
+
+@keyframes admin-rebuild-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}

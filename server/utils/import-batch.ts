@@ -40,6 +40,7 @@ export type ImportBatchOutcome = {
   directories_created: number;
   posts_created: number;
   post_slugs: string[];
+  post_ids: number[];
   warnings: string[];
 };
 
@@ -322,6 +323,7 @@ export async function runImportBatch(
     directories_created: dirStats.created,
     posts_created: post_slugs.length,
     post_slugs,
+    post_ids: imported.map((row) => row.id),
     warnings: [...new Set(warnings)],
   };
 }

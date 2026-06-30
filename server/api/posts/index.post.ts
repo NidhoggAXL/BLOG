@@ -1,6 +1,6 @@
 import type { ResultSetHeader } from 'mysql2'
 import { resolveManualPostSlug } from '../../utils/post-path-slug'
-import { queuePostEmbeddingsSync } from '../../utils/ai/embeddings'
+import { queuePostTextIndexSync } from '../../utils/ai/post-text-index'
 import { syncPostWikilinks } from '../../utils/wikilinks'
 import { normalizeWikilinkResolutions } from '../../../utils/normalizeWikilinkResolutions'
 import { rethrowIfWikilinkAmbiguous } from '../../utils/wikilink-sync-error'
@@ -81,7 +81,7 @@ export default defineEventHandler(async (event) => {
 
     await conn.commit()
 
-    queuePostEmbeddingsSync(pool, insertId, event)
+    queuePostTextIndexSync(pool, insertId, event)
 
     const warnings: string[] = []
     if (syncResult.skipped && syncResult.skipReason === 'no_table') {

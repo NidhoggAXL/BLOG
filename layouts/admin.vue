@@ -66,8 +66,12 @@
         <RouteLoadingOverlay />
         <header class="admin-card admin-toolbar-card" aria-label="功能按钮">
           <div class="toolbar-title">{{ title }}</div>
-          <div class="toolbar-center">
-            <DashboardWikilinkRebuildButton v-if="isDashboardPage" />
+          <div
+            v-if="isDashboardPage"
+            class="toolbar-center toolbar-center--actions"
+          >
+            <DashboardWikilinkRebuildButton />
+            <DashboardPostTextIndexRebuildButton v-if="aiEnabled" />
           </div>
           <div class="toolbar-actions">
             <NuxtLink to="/" class="btn btn-ghost">查看站点</NuxtLink>
@@ -108,6 +112,8 @@ const importOpen = ref(false);
 const { toggleTheme, isDark } = useAppTheme();
 
 const isDashboardPage = computed(() => route.path === "/admin");
+const runtimeConfig = useRuntimeConfig();
+const aiEnabled = computed(() => runtimeConfig.public.aiEnabled !== false);
 
 onMounted(() => {
   if (!auth.checked) auth.fetchMe();
@@ -334,6 +340,14 @@ function isMenuActive(to: string) {
 
 .toolbar-center {
   justify-self: center;
+}
+
+.toolbar-center--actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
 }
 
 .toolbar-actions {

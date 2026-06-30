@@ -6,6 +6,7 @@ import {
 } from "../../utils/import-batch";
 import { normalizeWikilinkResolutions } from "../../../utils/normalizeWikilinkResolutions";
 import { rethrowIfWikilinkAmbiguous } from "../../utils/wikilink-sync-error";
+import { queuePostTextIndexSync } from "../../utils/ai/post-text-index";
 
 function normalizeDirectoryId(raw: unknown): number | null {
   if (raw === undefined || raw === null || raw === "") return null;
@@ -149,6 +150,12 @@ export default defineEventHandler(async (event) => {
         "若库内已有文章引用了本次导入的笔记，请重新保存那些文章以更新双链边表。",
       );
       result.warnings = [...new Set(result.warnings)];
+    }
+
+    if (status === "published") {
+      for (const postId of result.post_ids) {
+        queuePostTextIndexSync(pool, postId, event);
+      }
     }
 
     return result;

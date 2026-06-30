@@ -3,7 +3,7 @@ import { renderPostBodyHtmlForPool } from '../../utils/render-post-body-html'
 import { fetchPostBySlug, normalizeDirectoryId, normalizeStatus } from '../../utils/post-mutate'
 import { resolveAdminPostSlugFromEvent } from '../../utils/post-slug-param'
 import { resolveManualPostSlug } from '../../utils/post-path-slug'
-import { queuePostEmbeddingsSync } from '../../utils/ai/embeddings'
+import { queuePostTextIndexSync } from '../../utils/ai/post-text-index'
 import { getExplicitOutboundSlugs, syncPostWikilinks } from '../../utils/wikilinks'
 import { registerSlugAsAliasOnRename, listPostAliases } from '../../utils/post-aliases'
 import { normalizeWikilinkResolutions } from '../../../utils/normalizeWikilinkResolutions'
@@ -97,7 +97,7 @@ export default defineEventHandler(async (event) => {
 
     await conn.commit()
 
-    queuePostEmbeddingsSync(pool, existing.id, event)
+    queuePostTextIndexSync(pool, existing.id, event)
 
     const [rows] = await conn.query(
       'SELECT id, directory_id, sort_order, slug, title, body, status, published_at, created_at, updated_at FROM posts WHERE id = ? LIMIT 1',
