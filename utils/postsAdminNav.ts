@@ -12,11 +12,8 @@ import {
   type LibraryNavNode,
 } from "~/utils/libraryDirectory";
 
-/** 侧栏「全部文章」虚拟节点 */
-export const ALL_POSTS_NAV_ID = -2;
-
 export type PostsAdminNavNode = LibraryNavNode & {
-  kind?: "all" | "uncategorized" | "folder";
+  kind?: "uncategorized" | "folder";
 };
 
 export function buildPostsAdminNavTree(
@@ -26,18 +23,7 @@ export function buildPostsAdminNavTree(
   const dirRoots = buildDirectoryRowTree(flat);
   const dirNodes = buildLibraryNavTree(dirRoots, posts, flat);
 
-  const roots: PostsAdminNavNode[] = [
-    {
-      id: ALL_POSTS_NAV_ID,
-      name: "全部",
-      slug: "_all",
-      pathLabel: "全部",
-      postCount: posts.length,
-      directPostCount: posts.length,
-      children: [],
-      kind: "all",
-    },
-  ];
+  const roots: PostsAdminNavNode[] = [];
 
   if (posts.some((p) => p.directory_id == null)) {
     const uncategorizedCount = posts.filter((p) => p.directory_id == null).length;
@@ -63,9 +49,7 @@ export function filterPostsAdminNavTree(
   const q = query.trim().toLowerCase();
   if (!q) return nodes;
 
-  const virtual = nodes.filter(
-    (n) => n.kind === "all" || n.kind === "uncategorized",
-  );
+  const virtual = nodes.filter((n) => n.kind === "uncategorized");
   const folders = nodes.filter((n) => n.kind === "folder");
   const filteredFolders = filterLibraryNavTree(
     folders as LibraryNavNode[],
@@ -104,7 +88,6 @@ export function postsForNavSelection(
   flat: DirectoryRow[],
 ): PostListItem[] {
   if (navId == null) return [];
-  if (navId === ALL_POSTS_NAV_ID) return posts;
   if (navId === UNCATEGORIZED_FOLDER_ID) {
     return posts.filter((p) => p.directory_id == null);
   }
@@ -120,7 +103,6 @@ export function subtreeCountForNav(
   flat: DirectoryRow[],
 ): number {
   if (navId == null) return 0;
-  if (navId === ALL_POSTS_NAV_ID) return posts.length;
   if (navId === UNCATEGORIZED_FOLDER_ID) {
     return posts.filter((p) => p.directory_id == null).length;
   }

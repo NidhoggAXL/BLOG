@@ -15,6 +15,33 @@
   background: var(--admin-toolbar-bg);
 }
 
+/** 嵌入外层卡片时使用，避免内外双层边框 */
+.admin-tree-nav--flat {
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  overflow: visible;
+}
+
+.admin-tree-nav--flat .admin-tree-nav__row {
+  border-bottom: none;
+  border-radius: @radius-md;
+  margin-bottom: 2px;
+}
+
+.admin-tree-nav--flat .admin-tree-nav__row--virtual {
+  background: transparent;
+}
+
+.admin-tree-nav--flat .admin-tree-nav__row--active {
+  box-shadow: none;
+  background: var(--admin-nav-active-bg);
+}
+
+.admin-tree-nav--flat .admin-tree-nav__row:hover:not(.admin-tree-nav__row--active) {
+  background: var(--admin-nav-hover);
+}
+
 .admin-tree-nav__item {
   margin: 0;
 }

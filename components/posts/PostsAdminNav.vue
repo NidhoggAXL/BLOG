@@ -2,7 +2,6 @@
 import {
   CaretBottom,
   CaretRight,
-  Files,
   Folder,
   FolderOpened,
 } from "@element-plus/icons-vue";
@@ -10,11 +9,16 @@ import type { PostsAdminNavNode } from "~/utils/postsAdminNav";
 
 defineOptions({ name: "PostsAdminNav" });
 
-const props = defineProps<{
-  nodes: PostsAdminNavNode[];
-  selectedId: number | null;
-  depth?: number;
-}>();
+const props = withDefaults(
+  defineProps<{
+    nodes: PostsAdminNavNode[];
+    selectedId: number | null;
+    depth?: number;
+    /** 嵌入侧栏大卡片内，不额外套一层边框/圆角 */
+    flat?: boolean;
+  }>(),
+  { flat: false },
+);
 
 const emit = defineEmits<{
   select: [id: number];
@@ -35,7 +39,6 @@ function onToggle(id: number) {
 }
 
 function nodeIcon(n: PostsAdminNavNode) {
-  if (n.kind === "all") return Files;
   if (n.kind === "uncategorized") return FolderOpened;
   return Folder;
 }
@@ -44,7 +47,10 @@ function nodeIcon(n: PostsAdminNavNode) {
 <template>
   <ul
     class="admin-tree-nav"
-    :class="{ 'admin-tree-nav--root': (depth ?? 0) === 0 }"
+    :class="{
+      'admin-tree-nav--root': (depth ?? 0) === 0 && !flat,
+      'admin-tree-nav--flat': (depth ?? 0) === 0 && flat,
+    }"
     role="tree"
   >
     <li
@@ -58,7 +64,7 @@ function nodeIcon(n: PostsAdminNavNode) {
         class="admin-tree-nav__row"
         :class="{
           'admin-tree-nav__row--active': selectedId === n.id,
-          'admin-tree-nav__row--virtual': n.kind === 'all' || n.kind === 'uncategorized',
+          'admin-tree-nav__row--virtual': n.kind === 'uncategorized',
         }"
         :style="{ paddingLeft: `${4 + (depth ?? 0) * 16}px` }"
       >
@@ -97,6 +103,7 @@ function nodeIcon(n: PostsAdminNavNode) {
         :nodes="n.children"
         :selected-id="selectedId"
         :depth="(depth ?? 0) + 1"
+        :flat="flat"
         @select="emit('select', $event)"
       />
     </li>

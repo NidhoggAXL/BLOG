@@ -64,8 +64,20 @@
 
       <div class="admin-main">
         <RouteLoadingOverlay />
-        <header class="admin-card admin-toolbar-card" aria-label="功能按钮">
-          <div class="toolbar-title">{{ title }}</div>
+        <header
+          class="admin-card admin-toolbar-card"
+          :class="{ 'admin-toolbar-card--rich': isPostsListPage && effectiveToolbar?.subtitle }"
+          aria-label="功能按钮"
+        >
+          <div class="toolbar-title-block">
+            <div class="toolbar-title">{{ title }}</div>
+            <p
+              v-if="isPostsListPage && effectiveToolbar?.subtitle"
+              class="toolbar-subtitle"
+            >
+              {{ effectiveToolbar.subtitle }}
+            </p>
+          </div>
           <div
             v-if="isDashboardPage"
             class="toolbar-center toolbar-center--actions"
@@ -74,8 +86,29 @@
             <DashboardPostTextIndexRebuildButton v-if="aiEnabled" />
           </div>
           <div class="toolbar-actions">
+            <template
+              v-if="isPostsListPage && effectiveToolbar && !effectiveToolbar.hideActions"
+            >
+              <NuxtLink to="/admin/posts/new">
+                <el-button type="primary" :icon="DocumentAdd">新建文章</el-button>
+              </NuxtLink>
+              <el-button
+                :icon="Refresh"
+                :loading="effectiveToolbar.loading"
+                @click="onPostsRefresh"
+              >
+                刷新列表
+              </el-button>
+              <el-button :icon="Upload" @click="importOpen = true">
+                导入文件
+              </el-button>
+              <el-button :icon="FolderOpened" @click="goBatchImport">
+                批量导入
+              </el-button>
+            </template>
             <NuxtLink to="/" class="btn btn-ghost">查看站点</NuxtLink>
             <button
+              v-if="showGlobalImport"
               type="button"
               class="btn btn-ghost"
               @click="importOpen = true"
@@ -100,7 +133,11 @@
 </template>
 
 <script setup lang="ts">
+import { DocumentAdd, FolderOpened, Refresh, Upload } from "@element-plus/icons-vue";
 import PostImportFolderDialog from "~/components/posts/PostImportFolderDialog.vue";
+import {
+  mergeAdminPageToolbar,
+} from "~/composables/useAdminPageToolbar";
 
 useHead({
   meta: [{ name: "robots", content: "noindex, nofollow" }],
@@ -110,8 +147,15 @@ const route = useRoute();
 const auth = useAuthStore();
 const importOpen = ref(false);
 const { toggleTheme, isDark } = useAppTheme();
+const { toolbarConfig, runToolbarRefresh } = useAdminPageToolbar();
+
+const effectiveToolbar = computed(() =>
+  mergeAdminPageToolbar(route.path, toolbarConfig.value),
+);
 
 const isDashboardPage = computed(() => route.path === "/admin");
+const isPostsListPage = computed(() => route.path === "/admin/posts");
+const showGlobalImport = computed(() => route.path !== "/admin/posts");
 const runtimeConfig = useRuntimeConfig();
 const aiEnabled = computed(() => runtimeConfig.public.aiEnabled !== false);
 
@@ -189,6 +233,14 @@ function isMenuActive(to: string) {
     );
   }
   return path === to || path.startsWith(`${to}/`);
+}
+
+function onPostsRefresh() {
+  runToolbarRefresh();
+}
+
+function goBatchImport() {
+  void navigateTo("/admin/posts/import/batch");
 }
 
 </script>
@@ -339,11 +391,24 @@ function isMenuActive(to: string) {
   color: var(--admin-muted);
 }
 
-.toolbar-title {
+.toolbar-title-block {
   justify-self: start;
+  min-width: 0;
+}
+
+.toolbar-title {
   font-size: 16px;
   font-weight: 600;
   letter-spacing: 0.02em;
+  line-height: 1.3;
+}
+
+.toolbar-subtitle {
+  margin: 3px 0 0;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--admin-muted);
+  line-height: 1.35;
 }
 
 .toolbar-center {

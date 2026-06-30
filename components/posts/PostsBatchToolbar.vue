@@ -1,115 +1,90 @@
 <script setup lang="ts">
-import { ArrowDown } from "@element-plus/icons-vue";
-import type { PostListItem } from "~/types/post";
+import { ArrowDown } from '@element-plus/icons-vue'
+import type { PostListItem } from '~/types/post'
 
 const props = defineProps<{
-  selectionCount: number;
-  directoryCount: number;
-  canApplyDirectory: boolean;
-  batchTargetStatus: PostListItem["status"];
-  statusOptions: { value: PostListItem["status"]; label: string }[];
-  statusLoading: boolean;
-  canDeleteSelection: boolean;
-  canDeleteDirectory: boolean;
-}>();
+  selectionCount: number
+  directoryCount: number
+  canApplyDirectory: boolean
+  batchTargetStatus: PostListItem['status']
+  statusOptions: { value: PostListItem['status']; label: string }[]
+  statusLoading: boolean
+  canDeleteDirectory: boolean
+}>()
 
 const emit = defineEmits<{
-  "update:batchTargetStatus": [PostListItem["status"]];
-  applyStatusSelection: [];
-  applyStatusDirectory: [];
-  deleteSelection: [];
-  deleteDirectory: [];
-}>();
+  'update:batchTargetStatus': [PostListItem['status']]
+  applyStatusSelection: []
+  applyStatusDirectory: []
+  deleteSelection: []
+  deleteDirectory: []
+  clearSelection: []
+}>()
 
 const statusModel = computed({
   get: () => props.batchTargetStatus,
-  set: (v: PostListItem["status"]) => emit("update:batchTargetStatus", v),
-});
+  set: (v: PostListItem['status']) => emit('update:batchTargetStatus', v),
+})
 
-type StatusCommand = "applyStatusSelection" | "applyStatusDirectory";
-type DeleteCommand = "deleteSelection" | "deleteDirectory";
+type MoreCommand = 'applyStatusDirectory' | 'deleteDirectory'
 
-function onStatusCommand(cmd: StatusCommand) {
-  if (cmd === "applyStatusSelection") emit("applyStatusSelection");
-  else emit("applyStatusDirectory");
-}
-
-function onDeleteCommand(cmd: DeleteCommand) {
-  if (cmd === "deleteSelection") emit("deleteSelection");
-  else emit("deleteDirectory");
+function onMoreCommand(cmd: MoreCommand) {
+  if (cmd === 'applyStatusDirectory') emit('applyStatusDirectory')
+  else emit('deleteDirectory')
 }
 </script>
 
 <template>
   <div class="posts-batch-toolbar">
-    <span v-if="selectionCount > 0" class="posts-batch-toolbar__hint">
-      已选 {{ selectionCount }} 篇
-    </span>
-    <span v-else class="posts-batch-toolbar__hint posts-batch-toolbar__hint--muted">
-      勾选表格行后可批量操作
-    </span>
+    <div class="posts-batch-toolbar__left">
+      <span class="posts-batch-toolbar__hint">已选 {{ selectionCount }} 篇</span>
+      <el-button type="primary" link @click="emit('clearSelection')">取消选择</el-button>
+    </div>
 
-    <el-divider direction="vertical" />
+    <div class="posts-batch-toolbar__right">
+      <el-radio-group v-model="statusModel" size="small" :disabled="statusLoading">
+        <el-radio-button
+          v-for="opt in statusOptions"
+          :key="opt.value"
+          :value="opt.value"
+        >
+          {{ opt.label }}
+        </el-radio-button>
+      </el-radio-group>
 
-    <el-select
-      v-model="statusModel"
-      size="default"
-      class="posts-batch-toolbar__select"
-      :disabled="statusLoading"
-    >
-      <el-option
-        v-for="opt in statusOptions"
-        :key="opt.value"
-        :label="opt.label"
-        :value="opt.value"
-      />
-    </el-select>
-
-    <el-dropdown trigger="click" @command="onStatusCommand">
-      <el-button type="primary" plain :loading="statusLoading">
-        修改状态
-        <el-icon class="el-icon--right"><ArrowDown /></el-icon>
+      <el-button
+        type="primary"
+        :loading="statusLoading"
+        @click="emit('applyStatusSelection')"
+      >
+        应用
       </el-button>
-      <template #dropdown>
-        <el-dropdown-menu>
-          <el-dropdown-item
-            command="applyStatusSelection"
-            :disabled="!selectionCount || statusLoading"
-          >
-            应用到选中（{{ selectionCount }}）
-          </el-dropdown-item>
-          <el-dropdown-item
-            command="applyStatusDirectory"
-            :disabled="!canApplyDirectory || statusLoading"
-          >
-            应用到当前列表（{{ directoryCount }}）
-          </el-dropdown-item>
-        </el-dropdown-menu>
-      </template>
-    </el-dropdown>
 
-    <el-dropdown trigger="click" @command="onDeleteCommand">
-      <el-button type="danger" plain>
-        删除
-        <el-icon class="el-icon--right"><ArrowDown /></el-icon>
-      </el-button>
-      <template #dropdown>
-        <el-dropdown-menu>
-          <el-dropdown-item
-            command="deleteSelection"
-            :disabled="!canDeleteSelection"
-          >
-            删除选中（{{ selectionCount }}）
-          </el-dropdown-item>
-          <el-dropdown-item
-            command="deleteDirectory"
-            :disabled="!canDeleteDirectory"
-          >
-            删除当前列表（{{ directoryCount }}）
-          </el-dropdown-item>
-        </el-dropdown-menu>
-      </template>
-    </el-dropdown>
+      <el-button type="danger" plain @click="emit('deleteSelection')">删除</el-button>
+
+      <el-dropdown trigger="click" @command="onMoreCommand">
+        <el-button>
+          更多
+          <el-icon class="el-icon--right"><ArrowDown /></el-icon>
+        </el-button>
+        <template #dropdown>
+          <el-dropdown-menu>
+            <el-dropdown-item
+              command="applyStatusDirectory"
+              :disabled="!canApplyDirectory || statusLoading"
+            >
+              应用到当前列表（{{ directoryCount }}）
+            </el-dropdown-item>
+            <el-dropdown-item
+              command="deleteDirectory"
+              :disabled="!canDeleteDirectory"
+            >
+              删除当前列表（{{ directoryCount }}）
+            </el-dropdown-item>
+          </el-dropdown-menu>
+        </template>
+      </el-dropdown>
+    </div>
   </div>
 </template>
 
@@ -118,7 +93,23 @@ function onDeleteCommand(cmd: DeleteCommand) {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
+  justify-content: space-between;
+  gap: 12px 16px;
+}
+
+.posts-batch-toolbar__left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.posts-batch-toolbar__right {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   gap: 10px;
+  margin-left: auto;
 }
 
 .posts-batch-toolbar__hint {
@@ -128,17 +119,10 @@ function onDeleteCommand(cmd: DeleteCommand) {
   white-space: nowrap;
 }
 
-.posts-batch-toolbar__hint--muted {
-  font-weight: 500;
-  color: var(--admin-muted);
-}
-
-.posts-batch-toolbar__select {
-  width: 108px;
-}
-
-.posts-batch-toolbar :deep(.el-divider--vertical) {
-  height: 1.2em;
-  margin: 0 2px;
+@media (max-width: 600px) {
+  .posts-batch-toolbar__right {
+    width: 100%;
+    margin-left: 0;
+  }
 }
 </style>

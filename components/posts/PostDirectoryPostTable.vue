@@ -8,17 +8,16 @@ import type { PostListRow } from '~/utils/postSearch'
 
 defineOptions({ name: 'PostDirectoryPostTable' })
 
-/** 各列统一最小宽度，整体宽度相近 */
-const COL_MIN_WIDTH = 140
-
 const props = withDefaults(
   defineProps<{
     posts: PostListRow[]
     showDirectoryColumn?: boolean
+    cardView?: boolean
     emptyText?: string
   }>(),
   {
     showDirectoryColumn: false,
+    cardView: false,
     emptyText: '该目录下暂无文章',
   },
 )
@@ -33,25 +32,47 @@ const router = useRouter()
 const deleteSlug = ref<string | null>(null)
 const tableRef = ref<TableInstance | null>(null)
 const wrapRef = ref<HTMLElement | null>(null)
-const tableHeight = ref(280)
+/** 仅客户端测量后赋值，避免 SSR 默认高度与客户端 hydration 不一致 */
+const tableHeight = ref<number | undefined>(undefined)
 
 let resizeObserver: ResizeObserver | null = null
+let resizeRaf = 0
 
 function updateTableHeight() {
   const el = wrapRef.value
   if (!el) return
-  tableHeight.value = Math.max(120, Math.floor(el.clientHeight))
+  const next = Math.max(120, Math.floor(el.getBoundingClientRect().height))
+  if (next <= 0) return
+  if (tableHeight.value !== next) {
+    tableHeight.value = next
+    nextTick(() => tableRef.value?.doLayout?.())
+  }
 }
 
-onMounted(() => {
+function scheduleTableHeightUpdate() {
+  if (!import.meta.client) return
+  cancelAnimationFrame(resizeRaf)
+  resizeRaf = requestAnimationFrame(() => {
+    updateTableHeight()
+  })
+}
+
+onMounted(async () => {
+  await nextTick()
   updateTableHeight()
-  resizeObserver = new ResizeObserver(() => updateTableHeight())
+  resizeObserver = new ResizeObserver(() => scheduleTableHeightUpdate())
   if (wrapRef.value) resizeObserver.observe(wrapRef.value)
+  if (wrapRef.value?.parentElement) {
+    resizeObserver.observe(wrapRef.value.parentElement)
+  }
+  window.addEventListener('resize', scheduleTableHeightUpdate)
 })
 
 onUnmounted(() => {
+  cancelAnimationFrame(resizeRaf)
   resizeObserver?.disconnect()
   resizeObserver = null
+  window.removeEventListener('resize', scheduleTableHeightUpdate)
 })
 
 const rows = computed(() =>
@@ -60,6 +81,40 @@ const rows = computed(() =>
     const tb = b.created_at ?? b.updated_at ?? ''
     return tb.localeCompare(ta)
   }),
+)
+
+const tableClass = computed(() => [
+  'admin-data-table',
+  'admin-data-table--clickable',
+  'admin-data-table--comfortable',
+  'admin-data-table--posts',
+])
+
+/** 列宽：固定列定宽，标题/Slug/目录用相同 min-width 均分剩余空间 */
+const colLayout = computed(() => {
+  const hasDirCol = props.showDirectoryColumn
+  const flexMin = hasDirCol ? 128 : 140
+
+  return {
+    selectionWidth: 46,
+    directoryMinWidth: flexMin,
+    titleMinWidth: flexMin,
+    slugMinWidth: flexMin,
+    statusWidth: 84,
+    /** 容纳「2026年12月31日」 */
+    dateWidth: 120,
+    /** 编辑 + 删除 两个带图标链接按钮 */
+    actionWidth: 152,
+  }
+})
+
+watch(
+  () => [props.posts.length, props.showDirectoryColumn] as const,
+  async () => {
+    await nextTick()
+    scheduleTableHeightUpdate()
+    tableRef.value?.doLayout?.()
+  },
 )
 
 function statusLabel(status: PostListItem['status']) {
@@ -76,6 +131,10 @@ function statusTagType(status: PostListItem['status']) {
 
 function onRowClick(row: PostListItem, column: { type?: string }) {
   if (column?.type === 'selection') return
+  router.push(`/admin/posts/${encodeURIComponent(row.slug)}`)
+}
+
+function openDetail(row: PostListItem) {
   router.push(`/admin/posts/${encodeURIComponent(row.slug)}`)
 }
 
@@ -107,42 +166,85 @@ defineExpose({ clearSelection })
 </script>
 
 <template>
-  <div ref="wrapRef" class="admin-data-table-wrap">
-    <el-table
-      ref="tableRef"
-      :data="rows"
-      :height="tableHeight"
-      class="admin-data-table admin-data-table--clickable"
-      stripe
-      table-layout="auto"
-      row-key="id"
-      :empty-text="emptyText"
-      @row-click="(row: PostListItem, column: { type?: string }) => onRowClick(row, column)"
-      @selection-change="onSelectionChange"
+  <div
+    v-if="cardView"
+    ref="wrapRef"
+    class="posts-card-list"
+  >
+    <p v-if="!rows.length" class="posts-card-list__empty">{{ emptyText }}</p>
+    <article
+      v-for="row in rows"
+      :key="row.id"
+      class="posts-card-list__item"
+      @click="openDetail(row)"
     >
-      <el-table-column type="selection" width="44" align="center" :reserve-selection="false" />
+      <div class="posts-card-list__main">
+        <h3 class="posts-card-list__title">{{ row.title }}</h3>
+        <p class="posts-card-list__slug">{{ row.slug }}</p>
+        <p v-if="showDirectoryColumn && row.directory_path" class="posts-card-list__path">
+          {{ row.directory_path }}
+        </p>
+      </div>
+      <div class="posts-card-list__meta">
+        <el-tag size="small" :type="statusTagType(row.status)" effect="plain">
+          {{ statusLabel(row.status) }}
+        </el-tag>
+        <span class="admin-data-table__muted">创建 {{ formatDateZh(row.created_at) }}</span>
+        <span class="admin-data-table__muted">更新 {{ formatDateZh(row.updated_at) }}</span>
+      </div>
+      <div class="posts-card-list__actions" @click.stop>
+        <el-button type="primary" link :icon="Edit" @click="openEdit(row, $event)">编辑</el-button>
+        <el-button type="danger" link :icon="Delete" @click="openDelete(row, $event)">删除</el-button>
+      </div>
+    </article>
+  </div>
+
+  <div v-else ref="wrapRef" class="admin-data-table-wrap admin-data-table-wrap--fill">
+    <ClientOnly>
+      <el-table
+        v-if="tableHeight != null"
+        ref="tableRef"
+        :data="rows"
+        :height="tableHeight"
+        :class="tableClass"
+        stripe
+        table-layout="fixed"
+        row-key="id"
+        :empty-text="emptyText"
+        @row-click="(row: PostListItem, column: { type?: string }) => onRowClick(row, column)"
+        @selection-change="onSelectionChange"
+      >
+      <el-table-column
+        type="selection"
+        :width="colLayout.selectionWidth"
+        align="center"
+        header-align="center"
+        :reserve-selection="false"
+      />
       <el-table-column
         v-if="showDirectoryColumn"
         prop="directory_path"
         label="目录"
-        :min-width="COL_MIN_WIDTH"
-        align="left"
-        header-align="left"
-        class-name="admin-data-table__col-left"
-        label-class-name="admin-data-table__col-left"
+        :min-width="colLayout.directoryMinWidth"
+        align="center"
+        header-align="center"
+        class-name="admin-data-table__col-center admin-data-table__col-path"
+        label-class-name="admin-data-table__col-center admin-data-table__col-path"
+        show-overflow-tooltip
       >
         <template #default="{ row }">
-          <span class="admin-data-table__muted">{{ row.directory_path ?? '—' }}</span>
+          <span class="admin-data-table__path">{{ row.directory_path ?? '—' }}</span>
         </template>
       </el-table-column>
       <el-table-column
         prop="title"
         label="标题"
-        :min-width="COL_MIN_WIDTH"
-        align="left"
-        header-align="left"
-        class-name="admin-data-table__col-left admin-data-table__col-left--indent"
-        label-class-name="admin-data-table__col-left admin-data-table__col-left--indent"
+        :min-width="colLayout.titleMinWidth"
+        align="center"
+        header-align="center"
+        class-name="admin-data-table__col-center admin-data-table__col-title"
+        label-class-name="admin-data-table__col-center admin-data-table__col-title"
+        show-overflow-tooltip
       >
         <template #default="{ row }">
           <span class="admin-data-table__title">{{ row.title }}</span>
@@ -150,21 +252,26 @@ defineExpose({ clearSelection })
       </el-table-column>
       <el-table-column
         prop="slug"
-        label="Slug（URL 路径）"
-        :min-width="COL_MIN_WIDTH"
+        label="Slug"
+        :min-width="colLayout.slugMinWidth"
         align="center"
         header-align="center"
+        class-name="admin-data-table__col-center admin-data-table__col-slug"
+        label-class-name="admin-data-table__col-center admin-data-table__col-slug"
+        show-overflow-tooltip
       >
         <template #default="{ row }">
-          <code class="admin-data-table__slug">{{ row.slug }}</code>
+          <span class="admin-data-table__slug">{{ row.slug }}</span>
         </template>
       </el-table-column>
       <el-table-column
         prop="status"
         label="状态"
-        :min-width="COL_MIN_WIDTH"
+        :width="colLayout.statusWidth"
         align="center"
         header-align="center"
+        class-name="admin-data-table__col-center"
+        label-class-name="admin-data-table__col-center"
       >
         <template #default="{ row }">
           <el-tag size="small" :type="statusTagType(row.status)" effect="plain">
@@ -174,25 +281,40 @@ defineExpose({ clearSelection })
       </el-table-column>
       <el-table-column
         label="创建时间"
-        :min-width="COL_MIN_WIDTH"
+        :width="colLayout.dateWidth"
         align="center"
         header-align="center"
+        class-name="admin-data-table__col-center admin-data-table__col-date"
+        label-class-name="admin-data-table__col-center admin-data-table__col-date"
+        show-overflow-tooltip
       >
         <template #default="{ row }">
-          <span class="admin-data-table__muted">{{ formatDateZh(row.created_at) }}</span>
+          <span class="admin-data-table__date">{{ formatDateZh(row.created_at) }}</span>
         </template>
       </el-table-column>
       <el-table-column
         label="更新时间"
-        :min-width="COL_MIN_WIDTH"
+        :width="colLayout.dateWidth"
         align="center"
         header-align="center"
+        class-name="admin-data-table__col-center admin-data-table__col-date"
+        label-class-name="admin-data-table__col-center admin-data-table__col-date"
+        show-overflow-tooltip
       >
         <template #default="{ row }">
-          <span class="admin-data-table__muted">{{ formatDateZh(row.updated_at) }}</span>
+          <span class="admin-data-table__date">{{ formatDateZh(row.updated_at) }}</span>
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="120" align="center" header-align="center" fixed="right">
+      <el-table-column
+        label="操作"
+        :width="colLayout.actionWidth"
+        :min-width="colLayout.actionWidth"
+        fixed="right"
+        align="center"
+        header-align="center"
+        class-name="admin-data-table__col-center admin-data-table__col-actions"
+        label-class-name="admin-data-table__col-center admin-data-table__col-actions"
+      >
         <template #default="{ row }">
           <div class="admin-data-table__actions">
             <el-button type="primary" link :icon="Edit" @click="openEdit(row, $event)">编辑</el-button>
@@ -201,6 +323,10 @@ defineExpose({ clearSelection })
         </template>
       </el-table-column>
     </el-table>
+      <template #fallback>
+        <div class="admin-data-table-wrap__placeholder" aria-hidden="true" />
+      </template>
+    </ClientOnly>
   </div>
 
   <PostDeleteDialog
@@ -211,3 +337,82 @@ defineExpose({ clearSelection })
     @deleted="onDeleted"
   />
 </template>
+
+<style scoped lang="less">
+@import '~/assets/styles/variables.less';
+
+.posts-card-list {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.posts-card-list__empty {
+  margin: 0;
+  padding: 32px 16px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--admin-muted);
+}
+
+.posts-card-list__item {
+  padding: 12px 14px;
+  border: 1px solid var(--admin-border);
+  border-radius: @radius-lg;
+  background: var(--admin-card-bg);
+  cursor: pointer;
+  transition: background @transition-fast;
+
+  &:hover {
+    background: var(--admin-nav-hover);
+  }
+}
+
+.posts-card-list__main {
+  min-width: 0;
+  margin-bottom: 8px;
+}
+
+.posts-card-list__title {
+  margin: 0 0 4px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--admin-text);
+  line-height: 1.4;
+}
+
+.posts-card-list__slug {
+  margin: 0 0 4px;
+  font-size: 12px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  color: var(--admin-muted);
+  word-break: break-all;
+}
+
+.posts-card-list__path {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: var(--admin-muted);
+}
+
+.posts-card-list__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin-bottom: 8px;
+}
+
+.posts-card-list__actions {
+  display: flex;
+  gap: 4px;
+}
+
+.admin-data-table-wrap__placeholder {
+  flex: 1;
+  min-height: 120px;
+}
+</style>
